@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="en" dir="ltr" data-theme="black">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#000000" />
+<title>Python Runner · SBU</title>
+
+<!-- Service Worker: enables SharedArrayBuffer via COOP/COEP + caches Pyodide -->
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(r => console.log('SW registered:', r.scope))
+      .catch(e => console.warn('SW failed:', e));
+  });
+}
+</script>
+
+<!-- Pyodide from CDN (browser-cached, jsdelivr immutable) -->
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+
+<style>
+/* ═══════════ themes ═══════════ */
+:root{
+  --code-fs:15px;
+  --mono:"JetBrains Mono","Fira Code","SF Mono",Consolas,ui-monospace,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Tahoma,sans-serif;
+}
+[data-theme="black"]{
+  --bg:#000000; --panel:#000000; --panel-2:#0a0a0a; --line:#1f1f1f;
+  --fg:#f5f5f5; --dim:#8a8a8a; --accent:#e5e5e5; --accent-fg:#000000;
+  --code:#f5f5f5; --kw:#ffffff; --str:#b0b0b0; --num:#d4d4d4; --cmt:#5a5a5a;
+  --ok:#a3e635; --err:#f87171; --sel:#1f1f1f;
+}
+[data-theme="dark"]{
+  --bg:#0a0e1a; --panel:#111827; --panel-2:#161f31; --line:#222f45;
+  --fg:#e5e7eb; --dim:#94a3b8; --accent:#fbbf24; --accent-fg:#0a0e1a;
+  --code:#dbe4f0; --kw:#fbbf24; --str:#86efac; --num:#7dd3fc; --cmt:#64748b;
+  --ok:#86efac; --err:#fca5a5; --sel:#1f2b40;
+}
+[data-theme="light"]{
+  --bg:#f4f6fa; --panel:#ffffff; --panel-2:#f7f9fc; --line:#e2e7ef;
+  --fg:#0f172a; --dim:#64748b; --accent:#d97706; --accent-fg:#ffffff;
+  --code:#1e293b; --kw:#b45309; --str:#15803d; --num:#1d4ed8; --cmt:#94a3b8;
+  --ok:#15803d; --err:#b91c1c; --sel:#e6ecf6;
+}
+[data-theme="ocean"]{
+  --bg:#08151f; --panel:#0f2a3f; --panel-2:#123147; --line:#1c4a6b;
+  --fg:#d4f1f9; --dim:#7fb8d0; --accent:#22d3ee; --accent-fg:#06202c;
+  --code:#d4f1f9; --kw:#22d3ee; --str:#6ee7b7; --num:#fbbf24; --cmt:#5f92a8;
+  --ok:#6ee7b7; --err:#fca5a5; --sel:#173d58;
+}
+[data-theme="monokai"]{
+  --bg:#1e1f1c; --panel:#272822; --panel-2:#2d2e27; --line:#414339;
+  --fg:#f8f8f2; --dim:#9a9b8d; --accent:#fd971f; --accent-fg:#1e1f1c;
+  --code:#f8f8f2; --kw:#f92672; --str:#e6db74; --num:#ae81ff; --cmt:#75715e;
+  --ok:#a6e22e; --err:#f92672; --sel:#49483e;
+}
+[data-theme="dracula"]{
+  --bg:#1e1f29; --panel:#282a36; --panel-2:#2f3140; --line:#44475a;
+  --fg:#f8f8f2; --dim:#a9adc1; --accent:#bd93f9; --accent-fg:#1e1f29;
+  --code:#f8f8f2; --kw:#ff79c6; --str:#f1fa8c; --num:#bd93f9; --cmt:#6272a4;
+  --ok:#50fa7b; --err:#ff5555; --sel:#3d3f52;
+}
+[data-theme="nord"]{
+  --bg:#1c222c; --panel:#242b38; --panel-2:#2a3241; --line:#3b4454;
+  --fg:#e5e9f0; --dim:#8b98ac; --accent:#88c0d0; --accent-fg:#1c222c;
+  --code:#e5e9f0; --kw:#81a1c1; --str:#a3be8c; --num:#b48ead; --cmt:#616e88;
+  --ok:#a3be8c; --err:#bf616a; --sel:#3b4454;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:14px;
+  overflow:hidden;-webkit-text-size-adjust:100%;
+}
+button,select,textarea,input{font-family:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px}
+::-webkit-scrollbar-track{background:transparent}
+
+.app{height:100vh;height:100dvh;display:flex;flex-direction:column}
+
+/* ═══════════ top bar ═══════════ */
+.bar{
+  display:flex;align-items:center;gap:10px;flex:0 0 auto;
+  height:56px;padding:0 12px;padding-top:env(safe-area-inset-top);
+  background:var(--panel);border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:9px;min-width:0}
+.logo{
+  width:32px;height:32px;flex:0 0 auto;border-radius:10px;display:grid;place-items:center;
+  font-size:18px;background:var(--panel-2);border:1px solid var(--line);
+}
+.brand b{font-weight:700;letter-spacing:-.01em;display:block;line-height:1.2;font-size:15px}
+.brand small{display:block;font-size:11px;color:var(--dim)}
+.spacer{flex:1}
+
+.swatches{
+  display:flex;gap:5px;padding:4px;background:var(--panel-2);border:1px solid var(--line);
+  border-radius:10px;max-width:220px;overflow-x:auto;scrollbar-width:none;
+}
+.swatches::-webkit-scrollbar{display:none}
+.sw{width:22px;height:22px;border-radius:6px;border:2px solid transparent;cursor:pointer;transition:transform .15s}
+.sw:hover{transform:scale(1.12)}
+.sw.on{border-color:var(--accent)}
+.sw[data-t="black"]{background:linear-gradient(135deg,#000000,#2a2a2a)}
+.sw[data-t="dark"]{background:linear-gradient(135deg,#0a0e1a,#334155)}
+.sw[data-t="light"]{background:linear-gradient(135deg,#ffffff,#cbd5e1)}
+.sw[data-t="ocean"]{background:linear-gradient(135deg,#08151f,#22d3ee)}
+.sw[data-t="monokai"]{background:linear-gradient(135deg,#272822,#fd971f)}
+.sw[data-t="dracula"]{background:linear-gradient(135deg,#282a36,#bd93f9)}
+.sw[data-t="nord"]{background:linear-gradient(135deg,#242b38,#88c0d0)}
+
+.pill{
+  display:flex;align-items:center;gap:7px;height:30px;padding:0 11px;border-radius:999px;
+  background:var(--panel-2);border:1px solid var(--line);color:var(--dim);
+  font-size:11.5px;font-family:var(--mono);white-space:nowrap;
+}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:var(--dim);flex:0 0 auto}
+.pill.ok .dot{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.pill.ok{color:var(--ok)}
+.pill.err .dot{background:var(--err);box-shadow:0 0 8px var(--err)}
+.pill.err{color:var(--err)}
+.pill.load .dot{background:var(--accent);box-shadow:0 0 8px var(--accent)}
+.pill.load{color:var(--accent)}
+
+.icon{
+  background:transparent;border:1px solid var(--line);border-radius:9px;cursor:pointer;color:var(--dim);
+  width:34px;height:34px;display:grid;place-items:center;font-size:14px;transition:.15s;flex:0 0 auto;
+}
+.icon:hover{background:var(--panel-2);color:var(--accent);border-color:var(--accent)}
+.btn{
+  border:0;border-radius:9px;height:34px;padding:0 15px;cursor:pointer;
+  font-size:13px;font-weight:650;display:flex;align-items:center;gap:7px;white-space:nowrap;
+}
+.primary{background:var(--accent);color:var(--accent-fg)}
+.primary:hover{filter:brightness(1.08)}
+.primary:disabled{opacity:.5;cursor:wait}
+.ghost{background:transparent;border:1px solid var(--line);color:var(--dim)}
+.ghost:hover{background:var(--panel-2);color:var(--fg)}
+.kbd{font-family:var(--mono);font-size:10.5px;opacity:.6}
+
+/* ═══════════ workspace ═══════════ */
+.work{flex:1;min-height:0;display:flex;flex-direction:column}
+.split{flex:1;min-height:0;display:grid;grid-template-rows:var(--eh,58%) 8px 1fr}
+.pane{display:flex;flex-direction:column;min-height:0;background:var(--panel)}
+
+.edtoolbar{
+  display:flex;align-items:center;gap:9px;height:38px;padding:0 10px;flex:0 0 auto;
+  background:var(--panel-2);border-bottom:1px solid var(--line);
+}
+.edtb-label{font-size:11.5px;color:var(--dim);white-space:nowrap}
+.edtb-select{
+  background:var(--panel);border:1px solid var(--line);color:var(--fg);border-radius:7px;
+  height:26px;padding:0 8px;font-size:12px;cursor:pointer;max-width:140px;
+}
+.edtb-select:hover{border-color:var(--accent)}
+
+.code{
+  --ed-bg:var(--panel); --ed-fg:var(--code); --ed-kw:var(--kw); --ed-str:var(--str);
+  --ed-num:var(--num); --ed-cmt:var(--cmt); --ed-sel:var(--sel); --ed-caret:var(--accent);
+  --ed-dim:var(--dim); --ed-font:var(--mono);
+  flex:1;min-height:0;display:flex;overflow:hidden;position:relative;background:var(--ed-bg);
+}
+.code[data-editor-theme="monokai"]{
+  --ed-bg:#272822;--ed-fg:#f8f8f2;--ed-kw:#f92672;--ed-str:#e6db74;--ed-num:#ae81ff;
+  --ed-cmt:#75715e;--ed-sel:#49483e;--ed-caret:#fd971f;--ed-dim:#9a9b8d;
+}
+.code[data-editor-theme="dracula"]{
+  --ed-bg:#282a36;--ed-fg:#f8f8f2;--ed-kw:#ff79c6;--ed-str:#f1fa8c;--ed-num:#bd93f9;
+  --ed-cmt:#6272a4;--ed-sel:#3d3f52;--ed-caret:#bd93f9;--ed-dim:#a9adc1;
+}
+.code[data-editor-theme="light"]{
+  --ed-bg:#ffffff;--ed-fg:#1e293b;--ed-kw:#b45309;--ed-str:#15803d;--ed-num:#1d4ed8;
+  --ed-cmt:#94a3b8;--ed-sel:#e6ecf6;--ed-caret:#d97706;--ed-dim:#64748b;
+}
+#gutter{
+  padding:14px 10px 14px 14px;text-align:right;user-select:none;white-space:pre;overflow:hidden;flex:0 0 auto;
+  font-family:var(--ed-font);font-size:var(--code-fs);line-height:1.7;color:var(--ed-dim);opacity:.65;
+  background:var(--ed-bg);
+}
+.edit-wrap{position:relative;flex:1;min-width:0;background:var(--ed-bg)}
+#hl,#py{
+  position:absolute;inset:0;margin:0;border:0;
+  padding:14px 16px 14px 4px;white-space:pre;overflow:auto;
+  font-family:var(--ed-font);font-size:var(--code-fs);line-height:1.7;
+  tab-size:4;
+}
+#hl{pointer-events:none;overflow:hidden;color:var(--ed-fg)}
+#hl .k{color:var(--ed-kw);font-weight:600}
+#hl .s{color:var(--ed-str)}
+#hl .n{color:var(--ed-num)}
+#hl .c{color:var(--ed-cmt);font-style:italic}
+#py{
+  background:transparent;color:transparent;-webkit-text-fill-color:transparent;
+  caret-color:var(--ed-caret);resize:none;outline:0;
+}
+#py::selection{background:var(--ed-sel);color:var(--ed-fg);-webkit-text-fill-color:var(--ed-fg)}
+#py::-moz-selection{background:var(--ed-sel);color:var(--ed-fg)}
+
+.grab{cursor:row-resize;background:var(--bg);border-block:1px solid var(--line);touch-action:none}
+.grab::after{content:"";display:block;width:44px;height:3px;margin:2px auto;border-radius:2px;background:var(--line)}
+.grab:hover{background:var(--panel-2)}
+
+/* ═══════════ output ═══════════ */
+.pane-head{
+  display:flex;align-items:center;gap:9px;height:40px;padding:0 12px;flex:0 0 auto;
+  background:var(--panel-2);border-bottom:1px solid var(--line);font-size:12.5px;color:var(--dim);
+}
+#output{
+  flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;
+  font-family:var(--mono);font-size:13px;padding:14px 16px;
+  white-space:pre-wrap;line-height:1.65;
+}
+#output .line{margin:0}
+#output .err{color:var(--err)}
+#output .ok{color:var(--ok)}
+#output .dim{color:var(--dim)}
+#output .meta{color:var(--dim);font-style:italic}
+
+.stdin-bar{
+  display:flex;align-items:center;gap:8px;padding:8px 12px;flex:0 0 auto;
+  background:var(--panel-2);border-top:1px solid var(--line);
+  font-size:12px;color:var(--dim);
+}
+#stdin{
+  flex:1;background:var(--panel);border:1px solid var(--line);color:var(--fg);
+  border-radius:7px;height:30px;padding:0 10px;font-family:var(--mono);font-size:12px;
+  outline:0;min-width:0;
+}
+#stdin:focus{border-color:var(--accent)}
+
+/* ═══════════ modal ═══════════ */
+dialog{
+  border:1px solid var(--line);border-radius:16px;background:var(--panel);color:var(--fg);
+  padding:22px;max-width:440px;width:92%;box-shadow:0 24px 60px rgba(0,0,0,.5);
+}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+dialog h2{font-size:15px;margin-bottom:14px}
+dialog label{display:block;font-size:12.5px;color:var(--dim);margin-bottom:6px}
+dialog input[type=text]{
+  width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--fg);
+  border-radius:8px;height:36px;padding:0 11px;font-family:var(--mono);font-size:13px;
+  outline:0;margin-bottom:8px;
+}
+dialog input:focus{border-color:var(--accent)}
+dialog .row{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+dialog dl{display:grid;grid-template-columns:auto 1fr;gap:9px 16px;font-size:13px}
+dialog dt{font-family:var(--mono);color:var(--accent);white-space:nowrap}
+dialog dd{color:var(--dim)}
+
+/* ═══════════ mobile ═══════════ */
+.m-hide{display:flex}
+@media (max-width:760px){
+  .bar{height:52px;gap:8px;padding:0 10px}
+  .brand small{display:none}
+  .brand b{font-size:14px}
+  .m-hide{display:none}
+  .swatches{max-width:130px}
+  .split{grid-template-rows:var(--eh-m,50%) 10px 1fr}
+  .grab{height:10px}
+  #py,#hl{padding:12px 12px 12px 4px}
+  #gutter{padding:12px 8px 12px 10px}
+  .pane-head{height:42px}
+  .edtoolbar{height:36px}
+  .edtb-label{display:none}
+  .edtb-select{max-width:110px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+
+<body>
+<div class="app" id="app">
+
+  <header class="bar">
+    <div class="brand">
+      <div class="logo">🐍</div>
+      <span><b>Python Runner</b><small>Pyodide · WASM · runs in your browser</small></span>
+    </div>
+    <div class="spacer"></div>
+
+    <div class="swatches m-hide" id="swatches">
+      <button class="sw on" data-t="black" title="Black"></button>
+      <button class="sw" data-t="dark" title="Dark"></button>
+      <button class="sw" data-t="light" title="Light"></button>
+      <button class="sw" data-t="ocean" title="Ocean"></button>
+      <button class="sw" data-t="monokai" title="Monokai"></button>
+      <button class="sw" data-t="dracula" title="Dracula"></button>
+      <button class="sw" data-t="nord" title="Nord"></button>
+    </div>
+
+    <div class="pill load m-hide" id="pill"><span class="dot"></span><span id="status">loading Pyodide…</span></div>
+    <button class="icon m-hide" id="fs-down" title="Smaller text">A−</button>
+    <button class="icon m-hide" id="fs-up" title="Larger text">A+</button>
+    <button class="icon m-hide" id="help-btn" title="Shortcuts (F1)">?</button>
+    <button class="btn ghost m-hide" id="clear-btn">Clear</button>
+    <button class="btn ghost m-hide" id="examples-btn" title="Load an example">Examples</button>
+    <button class="btn ghost m-hide" id="pkg-btn" title="Install a Python package">📦 Package</button>
+    <button class="btn primary" id="run-btn" disabled>▶ Run <span class="kbd m-hide">⌘↵</span></button>
+  </header>
+
+  <main class="work">
+    <div class="split" id="split">
+      <section class="pane">
+        <div class="edtoolbar">
+          <span class="edtb-label">Editor theme</span>
+          <select class="edtb-select" id="editor-theme-select">
+            <option value="site">Match site theme</option>
+            <option value="monokai">Monokai</option>
+            <option value="dracula">Dracula</option>
+            <option value="light">Light</option>
+          </select>
+          <span class="spacer"></span>
+          <span class="edtb-label" id="meta" style="font-family:var(--mono);opacity:.7">Python · Pyodide</span>
+        </div>
+        <div class="code" id="code-area">
+          <div id="gutter">1</div>
+          <div class="edit-wrap">
+            <pre id="hl" aria-hidden="true"></pre>
+            <textarea id="py" wrap="off" spellcheck="false" autocomplete="off"
+                      autocapitalize="off" autocorrect="off"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <div class="grab" id="grab"></div>
+
+      <section class="pane">
+        <div class="pane-head">
+          <span>Output</span>
+          <span class="spacer"></span>
+          <span id="timing" style="font-family:var(--mono);font-size:12px">—</span>
+        </div>
+        <div id="output"><p class="line dim">Pyodide is loading. First load takes a few seconds…</p></div>
+        <div class="stdin-bar">
+          <span>stdin</span>
+          <input id="stdin" placeholder="optional input for input()" />
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- Package install dialog -->
+<dialog id="pkg-dialog">
+  <h2>Install a Python package</h2>
+  <label for="pkg-name">Package name (from PyPI)</label>
+  <input type="text" id="pkg-name" placeholder="e.g. requests, scipy, sympy" />
+  <div class="row">
+    <button class="btn ghost" id="pkg-cancel">Cancel</button>
+    <button class="btn primary" id="pkg-install">Install</button>
+  </div>
+</dialog>
+
+<!-- Examples dialog -->
+<dialog id="ex-dialog">
+  <h2>Examples</h2>
+  <div id="ex-list" style="display:flex;flex-direction:column;gap:6px"></div>
+  <div class="row">
+    <button class="btn ghost" id="ex-close">Close</button>
+  </div>
+</dialog>
+
+<!-- Help dialog -->
+<dialog id="help">
+  <h2>Keyboard shortcuts</h2>
+  <dl>
+    <dt>Ctrl / ⌘ + Enter</dt><dd>Run code</dd>
+    <dt>Tab</dt><dd>Insert 4 spaces</dd>
+    <dt>F1</dt><dd>This dialog</dd>
+  </dl>
+  <div class="row">
+    <button class="btn ghost" id="help-close">Close</button>
+  </div>
+</dialog>
+
+<script>
+/* ═════ UI plumbing ═════ */
+const $ = s => document.querySelector(s);
+const store = localStorage, root = document.documentElement;
+const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
+
+/* Themes */
+function setTheme(name){
+  root.dataset.theme = name;
+  store.setItem("py-theme", name);
+  document.querySelectorAll(".sw").forEach(b => b.classList.toggle("on", b.dataset.t === name));
+}
+setTheme(store.getItem("py-theme") || "black");
+on($("#swatches"), "click", e => {
+  const b = e.target.closest(".sw"); if (b) setTheme(b.dataset.t);
+});
+
+/* Editor theme */
+const codeArea = $("#code-area"), edSelect = $("#editor-theme-select");
+function setEditorTheme(name){
+  if (!name || name === "site") codeArea.removeAttribute("data-editor-theme");
+  else codeArea.dataset.editorTheme = name;
+  store.setItem("py-ed-theme", name || "site");
+}
+const savedEd = store.getItem("py-ed-theme") || "site";
+edSelect.value = savedEd;
+setEditorTheme(savedEd);
+on(edSelect, "change", e => setEditorTheme(e.target.value));
+
+/* Font size */
+let fs = +(store.getItem("py-fs") || 15);
+const applyFs = () => { root.style.setProperty("--code-fs", fs + "px"); store.setItem("py-fs", fs); };
+applyFs();
+on($("#fs-up"), "click", () => { fs = Math.min(28, fs + 1); applyFs(); });
+on($("#fs-down"), "click", () => { fs = Math.max(11, fs - 1); applyFs(); });
+
+/* Dialogs */
+on($("#help-btn"), "click", () => $("#help").showModal());
+on($("#help-close"), "click", () => $("#help").close());
+on($("#pkg-btn"), "click", () => $("#pkg-dialog").showModal());
+on($("#pkg-cancel"), "click", () => $("#pkg-dialog").close());
+on($("#examples-btn"), "click", () => { renderExamples(); $("#ex-dialog").showModal(); });
+on($("#ex-close"), "click", () => $("#ex-dialog").close());
+
+/* ═════ Editor + syntax highlight ═════ */
+const ta = $("#py"), hl = $("#hl"), gutter = $("#gutter");
+
+const PY_KW = new Set((
+  "False|None|True|and|as|assert|async|await|break|class|continue|def|del|elif|else|except|finally|" +
+  "for|from|global|if|import|in|is|lambda|nonlocal|not|or|pass|raise|return|try|while|with|yield|" +
+  "match|case|print|len|range|int|str|float|list|dict|set|tuple|bool|sum|min|max|abs|round|sorted|" +
+  "enumerate|zip|type|isinstance|open|input|map|filter|any|all|repr|format|super|self"
+).split("|"));
+const esc = s => s.replace(/[&<>]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;" }[c]));
+
+function highlight(src){
+  const re = /(#[^\n]*)|('(?:''|\\'|[^'])*'|"(?:[^"\\]|\\.)*")|(\b\d+(?:\.\d+)?\b)|([A-Za-z_][A-Za-z_0-9]*)/g;
+  let out = "", last = 0, m;
+  while ((m = re.exec(src)) !== null){
+    out += esc(src.slice(last, m.index));
+    if (m[1]) out += `<span class="c">${esc(m[1])}</span>`;
+    else if (m[2]) out += `<span class="s">${esc(m[2])}</span>`;
+    else if (m[3]) out += `<span class="n">${esc(m[3])}</span>`;
+    else out += PY_KW.has(m[4]) ? `<span class="k">${esc(m[4])}</span>` : esc(m[4]);
+    last = m.index + m[0].length;
+  }
+  return out + esc(src.slice(last)) + "\n";
+}
+function paint(){
+  hl.innerHTML = highlight(ta.value);
+  const n = ta.value.split("\n").length;
+  gutter.textContent = Array.from({ length: n }, (_, i) => i + 1).join("\n");
+  syncScroll();
+}
+function syncScroll(){
+  hl.scrollTop = ta.scrollTop; hl.scrollLeft = ta.scrollLeft; gutter.scrollTop = ta.scrollTop;
+}
+on(ta, "scroll", syncScroll);
+
+const starter = `# 🐍 Python Runner (Pyodide)
+# Press Run or Ctrl/Cmd+Enter
+
+import sys
+print("Python", sys.version.split()[0])
+print("Hello from the browser!")
+
+# NumPy is built in
+import numpy as np
+a = np.array([1, 2, 3, 4, 5])
+print("mean =", a.mean())
+print("sum  =", a.sum())
+
+# Use the stdin box below for input()
+# name = input("Your name: ")
+# print(f"Hi {name}!")`;
+
+ta.value = store.getItem("py-code") || starter;
+paint();
+const save = () => store.setItem("py-code", ta.value);
+on(ta, "input", () => { paint(); save(); });
+on(ta, "keydown", e => {
+  if (e.key === "Tab"){
+    e.preventDefault();
+    const s = ta.selectionStart, en = ta.selectionEnd;
+    ta.value = ta.value.slice(0, s) + "    " + ta.value.slice(en);
+    ta.selectionStart = ta.selectionEnd = s + 4; paint(); save();
+  }
+});
+
+/* ═════ Output ═════ */
+const outEl = $("#output"), timingEl = $("#timing");
+const statusEl = $("#status"), pillEl = $("#pill");
+function clearOut(){ outEl.innerHTML = ""; }
+function outLine(text, cls=""){
+  const p = document.createElement("p");
+  p.className = "line " + cls;
+  p.textContent = text;
+  outEl.appendChild(p);
+  outEl.scrollTop = outEl.scrollHeight;
+}
+function setStatus(msg, kind=""){
+  statusEl.textContent = msg;
+  pillEl.className = "pill " + kind;
+}
+
+/* ═════ Pyodide bootstrap ═════ */
+let pyodide = null, busy = false;
+
+async function bootPyodide(){
+  try {
+    setStatus("loading Pyodide…", "load");
+    pyodide = await loadPyodide({
+      stdout: line => outLine(line),
+      stderr: line => outLine(line, "err"),
+    });
+    setStatus("ready", "ok");
+    $("#run-btn").disabled = false;
+    clearOut();
+    outLine("Pyodide ready. Press Run to execute your code.", "ok");
+  } catch (e){
+    console.error(e);
+    setStatus("load failed", "err");
+    clearOut();
+    outLine("Failed to load Pyodide: " + (e.message || e), "err");
+  }
+}
+
+/* ═════ Run code ═════ */
+async function runCode(){
+  if (!pyodide || busy) return;
+  busy = true;
+  $("#run-btn").disabled = true;
+  setStatus("running…", "load");
+  clearOut();
+  timingEl.textContent = "…";
+
+  const stdinText = $("#stdin").value;
+  const t0 = performance.now();
+
+  try {
+    if (stdinText.trim()){
+      const lines = stdinText.split("\n");
+      pyodide.globals.set("__stdin_lines", pyodide.toPy(lines));
+      await pyodide.runPythonAsync(`
+import builtins
+__stdin_lines = list(__stdin_lines)
+__stdin_iter = iter(__stdin_lines)
+def input(prompt=""):
+    if prompt:
+        print(prompt, end="")
+    try:
+        return next(__stdin_iter)
+    except StopIteration:
+        return ""
+builtins.input = input
+`);
+    } else {
+      await pyodide.runPythonAsync(`
+import builtins
+def input(prompt=""):
+    if prompt:
+        print(prompt, end="")
+    return ""
+builtins.input = input
+`);
+    }
+
+    await pyodide.runPythonAsync(ta.value);
+    const ms = Math.round(performance.now() - t0);
+    timingEl.textContent = ms + " ms";
+    setStatus("ok", "ok");
+  } catch (e){
+    const ms = Math.round(performance.now() - t0);
+    timingEl.textContent = ms + " ms";
+    setStatus("error", "err");
+    outLine(String(e.message || e), "err");
+  } finally {
+    busy = false;
+    $("#run-btn").disabled = false;
+  }
+}
+
+on($("#run-btn"), "click", runCode);
+on($("#clear-btn"), "click", () => { clearOut(); timingEl.textContent = "—"; });
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter"){ e.preventDefault(); runCode(); }
+  if (e.key === "F1"){ e.preventDefault(); $("#help").showModal(); }
+});
+
+/* ═════ Install package ═════ */
+on($("#pkg-install"), "click", async () => {
+  const pkg = $("#pkg-name").value.trim();
+  if (!pkg || !pyodide) return;
+  $("#pkg-dialog").close();
+  setStatus("installing " + pkg + "…", "load");
+  outLine("📦 Installing " + pkg + "…", "meta");
+  try {
+    await pyodide.loadPackage("micropip");
+    const micropip = pyodide.pyimport("micropip");
+    await micropip.install(pkg);
+    setStatus("installed " + pkg, "ok");
+    outLine("✅ Installed " + pkg, "ok");
+  } catch (e){
+    setStatus("install failed", "err");
+    outLine("❌ " + (e.message || e), "err");
+  }
+  $("#pkg-name").value = "";
+});
+
+/* ═════ Examples ═════ */
+const EXAMPLES = [
+  ["Hello world", `print("Hello, world!")`],
+  ["Fibonacci (recursive)", `def fib(n):
+    if n < 2: return n
+    return fib(n-1) + fib(n-2)
+
+for i in range(10):
+    print(i, fib(i))`],
+  ["NumPy statistics", `import numpy as np
+data = np.random.normal(loc=50, scale=10, size=1000)
+print("mean:", data.mean().round(3))
+print("std :", data.std().round(3))
+print("min :", data.min().round(3))
+print("max :", data.max().round(3))`],
+  ["Reading input", `name = input("Your name: ")
+age = input("Your age: ")
+print(f"Hi {name}, you are {age} years old.")`],
+  ["Dictionary practice", `students = {
+    "Ali": 17.4, "Sara": 18.9, "Reza": 15.2, "Mina": 19.1,
+}
+for name, gpa in sorted(students.items(), key=lambda x: -x[1]):
+    print(f"{name:6} {gpa}")`],
+  ["Matplotlib plot", `import matplotlib
+matplotlib.use("AGG")
+import matplotlib.pyplot as plt
+import numpy as np
+
+x = np.linspace(0, 2*np.pi, 100)
+plt.plot(x, np.sin(x))
+plt.title("sin(x)")
+plt.savefig("sin.png")
+print("Plot saved as sin.png (in the virtual FS)")
+# Note: display in the page requires an extra step`],
+  ["List comprehension", `squares = [x*x for x in range(10)]
+evens   = [x for x in range(20) if x % 2 == 0]
+print(squares)
+print(evens)`],
+  ["Try / except", `def safe_div(a, b):
+    try:
+        return a / b
+    except ZeroDivisionError:
+        return "cannot divide by zero"
+
+print(safe_div(10, 2))
+print(safe_div(10, 0))`],
+];
+
+function renderExamples(){
+  const box = $("#ex-list");
+  box.innerHTML = "";
+  EXAMPLES.forEach(([name, code]) => {
+    const b = document.createElement("button");
+    b.className = "btn ghost";
+    b.style.justifyContent = "flex-start";
+    b.textContent = name;
+    b.onclick = () => {
+      ta.value = code;
+      paint(); save();
+      $("#ex-dialog").close();
+      ta.focus();
+    };
+    box.appendChild(b);
+  });
+}
+
+/* ═════ Resizable split ═════ */
+const split = $("#split"), grab = $("#grab");
+const key = () => innerWidth <= 760 ? "--eh-m" : "--eh";
+const savedH = store.getItem("py-eh-" + key());
+if (savedH) split.style.setProperty(key(), savedH);
+let dragging = false;
+on(grab, "pointerdown", e => { dragging = true; grab.setPointerCapture(e.pointerId); });
+on(grab, "pointermove", e => {
+  if (!dragging) return;
+  const r = split.getBoundingClientRect();
+  const h = Math.min(Math.max(e.clientY - r.top, 100), r.height - 100) + "px";
+  split.style.setProperty(key(), h);
+  store.setItem("py-eh-" + key(), h);
+});
+on(grab, "pointerup", () => dragging = false);
+
+/* ═════ Boot ═════ */
+bootPyodide();
+</script>
+</body>
+</html>
