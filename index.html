@@ -628,7 +628,7 @@ function setStatus(msg, kind=""){
 /* ═════ Pyodide bootstrap ═════ */
 let pyodide = null, busy = false;
 
-const PRELOAD = ["numpy", "pandas", "matplotlib"];
+const PRELOAD = ["numpy", "pandas", "matplotlib", "scikit-learn"];
 
 async function bootPyodide(){
   try {
