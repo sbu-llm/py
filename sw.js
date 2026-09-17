@@ -1,6 +1,6 @@
 /* Service Worker for Python Runner
-   - Caches Pyodide files for offline + fast reload
-   - Sets COOP/COEP headers so SharedArrayBuffer works (needed by Pyodide)
+   - Caches Pyodide + packages for offline + fast reload
+   - Sets COOP/COEP headers so SharedArrayBuffer works (required by Pyodide)
 */
 
 const CACHE = 'python-runner-v1';
@@ -74,7 +74,7 @@ self.addEventListener('fetch', event => {
 });
 
 /* Inject COOP/COEP headers on every response so Pyodide can use
-   SharedArrayBuffer, which is required for input() and some packages. */
+   SharedArrayBuffer. Without this, input() and some packages break. */
 function withHeaders(response){
   if (!response) return response;
   try {
