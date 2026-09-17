@@ -17,7 +17,7 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 
-<!-- Pyodide from CDN (browser-cached, jsdelivr immutable) -->
+<!-- Pyodide from CDN -->
 <script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
 
 <style>
@@ -460,20 +460,20 @@ on(ta, "scroll", syncScroll);
 
 const starter = `# 🐍 Python Runner (Pyodide)
 # Press Run or Ctrl/Cmd+Enter
+# NumPy, Pandas, Matplotlib are preloaded.
 
 import sys
 print("Python", sys.version.split()[0])
-print("Hello from the browser!")
 
-# NumPy is built in
 import numpy as np
 a = np.array([1, 2, 3, 4, 5])
 print("mean =", a.mean())
 print("sum  =", a.sum())
 
-# Use the stdin box below for input()
-# name = input("Your name: ")
-# print(f"Hi {name}!")`;
+import pandas as pd
+df = pd.DataFrame({"x": [1, 2, 3, 4], "y": [10, 20, 30, 40]})
+print(df)
+print("mean y =", np.mean(df["y"]))`;
 
 ta.value = store.getItem("py-code") || starter;
 paint();
@@ -507,6 +507,9 @@ function setStatus(msg, kind=""){
 /* ═════ Pyodide bootstrap ═════ */
 let pyodide = null, busy = false;
 
+/* Packages that ship with Pyodide and are useful to preload */
+const PRELOAD = ["numpy", "pandas"];
+
 async function bootPyodide(){
   try {
     setStatus("loading Pyodide…", "load");
@@ -514,10 +517,16 @@ async function bootPyodide(){
       stdout: line => outLine(line),
       stderr: line => outLine(line, "err"),
     });
+
+    // Preload scientific stack (fast — cached by SW after first visit)
+    setStatus("loading packages…", "load");
+    outLine("Loading: " + PRELOAD.join(", ") + "…", "meta");
+    await pyodide.loadPackage(PRELOAD);
+
     setStatus("ready", "ok");
     $("#run-btn").disabled = false;
     clearOut();
-    outLine("Pyodide ready. Press Run to execute your code.", "ok");
+    outLine("Pyodide ready — " + PRELOAD.join(", ") + " loaded.", "ok");
   } catch (e){
     console.error(e);
     setStatus("load failed", "err");
@@ -539,6 +548,15 @@ async function runCode(){
   const t0 = performance.now();
 
   try {
+    // Detect any imports in the user's code and auto-load missing Pyodide packages.
+    // This is exactly what the official Pyodide REPL does.
+    try {
+      await pyodide.loadPackagesFromImports(ta.value);
+    } catch (err){
+      // Not fatal — some packages may not be in Pyodide; they'll error at import time.
+      console.warn("loadPackagesFromImports:", err);
+    }
+
     if (stdinText.trim()){
       const lines = stdinText.split("\n");
       pyodide.globals.set("__stdin_lines", pyodide.toPy(lines));
@@ -588,7 +606,7 @@ document.addEventListener("keydown", e => {
   if (e.key === "F1"){ e.preventDefault(); $("#help").showModal(); }
 });
 
-/* ═════ Install package ═════ */
+/* ═════ Install package (micropip) ═════ */
 on($("#pkg-install"), "click", async () => {
   const pkg = $("#pkg-name").value.trim();
   if (!pkg || !pyodide) return;
@@ -611,18 +629,26 @@ on($("#pkg-install"), "click", async () => {
 /* ═════ Examples ═════ */
 const EXAMPLES = [
   ["Hello world", `print("Hello, world!")`],
-  ["Fibonacci (recursive)", `def fib(n):
-    if n < 2: return n
-    return fib(n-1) + fib(n-2)
-
-for i in range(10):
-    print(i, fib(i))`],
   ["NumPy statistics", `import numpy as np
 data = np.random.normal(loc=50, scale=10, size=1000)
 print("mean:", data.mean().round(3))
 print("std :", data.std().round(3))
 print("min :", data.min().round(3))
 print("max :", data.max().round(3))`],
+  ["Pandas DataFrame", `import pandas as pd
+df = pd.DataFrame({
+    "name": ["Ali", "Sara", "Reza", "Mina"],
+    "gpa":  [17.4, 18.9, 15.2, 19.1],
+})
+print(df)
+print()
+print(df.describe())`],
+  ["Fibonacci (recursive)", `def fib(n):
+    if n < 2: return n
+    return fib(n-1) + fib(n-2)
+
+for i in range(10):
+    print(i, fib(i))`],
   ["Reading input", `name = input("Your name: ")
 age = input("Your age: ")
 print(f"Hi {name}, you are {age} years old.")`],
@@ -640,8 +666,7 @@ x = np.linspace(0, 2*np.pi, 100)
 plt.plot(x, np.sin(x))
 plt.title("sin(x)")
 plt.savefig("sin.png")
-print("Plot saved as sin.png (in the virtual FS)")
-# Note: display in the page requires an extra step`],
+print("Plot saved as sin.png in the virtual FS")`],
   ["List comprehension", `squares = [x*x for x in range(10)]
 evens   = [x for x in range(20) if x % 2 == 0]
 print(squares)
