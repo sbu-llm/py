@@ -265,6 +265,7 @@ button,select,textarea,input{font-family:inherit;color:inherit}
   border-radius: 10px;
   border: 1px solid var(--line);
   background: #fff;
+  display: block;
 }
 
 /* toggle handle */
@@ -513,18 +514,16 @@ const figureTab = $("#figure-tab");
 const figureToggle = $("#figure-toggle");
 const figureBody = $("#figure-body");
 const figureCount = $("#figure-count");
-let figureIndex = 0;
 
 function toggleFigureTab(force){
   const open = force !== undefined ? force : !figureTab.classList.contains("open");
   figureTab.classList.toggle("open", open);
-  figureToggle.classList.toggle("show", figureBody.children.length > 0 || open);
+  figureToggle.classList.toggle("show", figureBody.querySelector("canvas, img") !== null || open);
 }
 on(figureToggle, "click", () => toggleFigureTab());
 on($("#figure-close"), "click", () => toggleFigureTab(false));
 on($("#figure-clear"), "click", () => {
   figureBody.innerHTML = "";
-  figureIndex = 0;
   figureCount.textContent = "0";
   figureToggle.classList.remove("show");
   toggleFigureTab(false);
@@ -532,7 +531,6 @@ on($("#figure-clear"), "click", () => {
 
 function clearFigures(){
   figureBody.innerHTML = "";
-  figureIndex = 0;
   figureCount.textContent = "0";
   figureToggle.classList.remove("show");
 }
@@ -638,12 +636,15 @@ async function bootPyodide(){
     outLine("Loading: " + PRELOAD.join(", ") + "…", "meta");
     await pyodide.loadPackage(PRELOAD);
 
-    // Configure matplotlib to render to our figure panel
+    // CRITICAL: Set the matplotlib target in JS BEFORE python uses it
     document.pyodideMplTarget = figureBody;
+
+    // Configure matplotlib with the wasm_backend (the correct one for Pyodide 0.27)
     pyodide.runPython(`
 import matplotlib
 matplotlib.use("module://matplotlib_pyodide.wasm_backend")
 import matplotlib.pyplot as plt
+plt.close('all')
 `);
 
     setStatus("ready", "ok");
@@ -665,6 +666,7 @@ async function runCode(){
   $("#run-btn").disabled = true;
   setStatus("running…", "load");
   clearOut();
+  clearFigures();
   timingEl.textContent = "…";
 
   const t0 = performance.now();
@@ -677,8 +679,10 @@ async function runCode(){
       console.warn("loadPackagesFromImports:", err);
     }
 
-    // Clear previous figures before running
-    clearFigures();
+    // Reset the JS target (in case the DOM node was replaced)
+    document.pyodideMplTarget = figureBody;
+
+    // Close any old figures in Python memory
     pyodide.runPython(`
 import matplotlib.pyplot as plt
 plt.close('all')
@@ -686,21 +690,20 @@ import gc
 gc.collect()
 `);
 
-    // Ensure matplotlib backend is configured (in case user changed it)
+    // Make sure the wasm_backend is still active
     pyodide.runPython(`
 import matplotlib
 try:
     matplotlib.use("module://matplotlib_pyodide.wasm_backend")
 except Exception:
     pass
-import matplotlib.pyplot as plt
-plt.close('all')
 `);
 
     // Run user code
     await pyodide.runPythonAsync(ta.value);
 
-    // Render any open figures
+    // CRITICAL: Force each open figure to actually draw its canvas.
+    // This is what fixes the "blank image" problem.
     const numFigs = pyodide.runPython(`
 import matplotlib.pyplot as plt
 len(plt.get_fignums())
@@ -710,15 +713,19 @@ len(plt.get_fignums())
       pyodide.runPython(`
 import matplotlib.pyplot as plt
 for _n in plt.get_fignums():
-    _f = plt.figure(_n)
-    _f.canvas.show()
+    _fig = plt.figure(_n)
+    # Force render into the canvas element that was appended to pyodideMplTarget
+    _fig.canvas.draw()
 `);
-      const n = figureBody.children.length;
-      figureCount.textContent = String(n);
-      if (n > 0){
-        figureToggle.classList.add("show");
-        toggleFigureTab(true);
-      }
+    }
+
+    // Count real canvas/img nodes now in the DOM
+    const rendered = figureBody.querySelectorAll("canvas, img").length;
+    figureCount.textContent = String(rendered);
+
+    if (rendered > 0){
+      figureToggle.classList.add("show");
+      toggleFigureTab(true);
     }
 
     const ms = Math.round(performance.now() - t0);
