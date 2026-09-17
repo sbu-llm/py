@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#000000" />
 <title>Python Runner · SBU</title>
 
-<!-- Pyodide from CDN - Upgraded to 0.27.0 for pyarrow support -->
+<!-- Pyodide from CDN -->
 <script src="https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js"></script>
 
 <style>
@@ -211,22 +211,117 @@ button,select,textarea,input{font-family:inherit;color:inherit}
 #output .dim{color:var(--dim)}
 #output .meta{color:var(--dim);font-style:italic}
 
-/* Matplotlib figure container */
-#mpl-container {
-  padding: 0 16px 14px 16px;
+/* ═══════════ figure tab (right side) ═══════════ */
+.figure-tab {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  height: 100dvh;
+  width: 0;
+  overflow: hidden;
+  background: var(--panel);
+  border-left: 1px solid var(--line);
+  transition: width 0.28s cubic-bezier(.4,0,.2,1);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  box-shadow: -6px 0 24px rgba(0,0,0,.35);
+}
+.figure-tab.open {
+  width: min(56vw, 720px);
+}
+.figure-tab-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 14px;
+  flex: 0 0 auto;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+.figure-tab-header b {
+  color: var(--fg);
+  font-weight: 650;
+}
+.figure-tab-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+}
+.figure-tab-body img,
+.figure-tab-body canvas {
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: #fff;
 }
 
-.stdin-bar{
-  display:flex;align-items:center;gap:8px;padding:8px 12px;flex:0 0 auto;
-  background:var(--panel-2);border-top:1px solid var(--line);
-  font-size:12px;color:var(--dim);
+/* toggle handle */
+.figure-tab-toggle {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  z-index: 51;
+  width: 30px;
+  height: 64px;
+  border-radius: 12px 0 0 12px;
+  border: 1px solid var(--line);
+  border-right: 0;
+  background: var(--panel-2);
+  color: var(--accent);
+  cursor: pointer;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: right 0.28s cubic-bezier(.4,0,.2,1), background .15s;
 }
-#stdin{
-  flex:1;background:var(--panel);border:1px solid var(--line);color:var(--fg);
-  border-radius:7px;height:30px;padding:0 10px;font-family:var(--mono);font-size:12px;
-  outline:0;min-width:0;
+.figure-tab-toggle:hover {
+  background: var(--panel);
 }
-#stdin:focus{border-color:var(--accent)}
+.figure-tab-toggle.show {
+  display: flex;
+}
+.figure-tab.open ~ .figure-tab-toggle {
+  right: min(56vw, 720px);
+}
+.figure-tab-toggle .chev {
+  transition: transform 0.28s ease;
+}
+.figure-tab.open ~ .figure-tab-toggle .chev {
+  transform: rotate(180deg);
+}
+
+/* mobile */
+@media (max-width:760px){
+  .bar{height:52px;gap:8px;padding:0 10px}
+  .brand small{display:none}
+  .brand b{font-size:14px}
+  .m-hide{display:none}
+  .swatches{max-width:130px}
+  .split{grid-template-rows:var(--eh-m,50%) 10px 1fr}
+  .grab{height:10px}
+  #py,#hl{padding:12px 12px 12px 4px}
+  #gutter{padding:12px 8px 12px 10px}
+  .pane-head{height:42px}
+  .edtoolbar{height:36px}
+  .edtb-label{display:none}
+  .edtb-select{max-width:110px}
+  .figure-tab.open{width:100vw}
+  .figure-tab.open ~ .figure-tab-toggle{right:100vw}
+}
 
 /* ═══════════ modal ═══════════ */
 dialog{
@@ -247,23 +342,6 @@ dialog dl{display:grid;grid-template-columns:auto 1fr;gap:9px 16px;font-size:13p
 dialog dt{font-family:var(--mono);color:var(--accent);white-space:nowrap}
 dialog dd{color:var(--dim)}
 
-/* ═══════════ mobile ═══════════ */
-.m-hide{display:flex}
-@media (max-width:760px){
-  .bar{height:52px;gap:8px;padding:0 10px}
-  .brand small{display:none}
-  .brand b{font-size:14px}
-  .m-hide{display:none}
-  .swatches{max-width:130px}
-  .split{grid-template-rows:var(--eh-m,50%) 10px 1fr}
-  .grab{height:10px}
-  #py,#hl{padding:12px 12px 12px 4px}
-  #gutter{padding:12px 8px 12px 10px}
-  .pane-head{height:42px}
-  .edtoolbar{height:36px}
-  .edtb-label{display:none}
-  .edtb-select{max-width:110px}
-}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -331,15 +409,27 @@ dialog dd{color:var(--dim)}
           <span id="timing" style="font-family:var(--mono);font-size:12px">—</span>
         </div>
         <div id="output"><p class="line dim">Pyodide is loading. First load takes a few seconds…</p></div>
-        <div id="mpl-container"></div>
-        <div class="stdin-bar">
-          <span>stdin</span>
-          <input id="stdin" placeholder="one line per input() call" />
-        </div>
       </section>
     </div>
   </main>
 </div>
+
+<!-- Figure tab (right side, collapsible) -->
+<aside class="figure-tab" id="figure-tab">
+  <div class="figure-tab-header">
+    <b>📊 Figures</b>
+    <span id="figure-count" style="font-family:var(--mono);font-size:11px">0</span>
+    <span class="spacer"></span>
+    <button class="icon" id="figure-clear" title="Clear figures" style="width:28px;height:28px;font-size:12px">🗑</button>
+    <button class="icon" id="figure-close" title="Close" style="width:28px;height:28px;font-size:12px">✕</button>
+  </div>
+  <div class="figure-tab-body" id="figure-body">
+    <p class="line dim" style="align-self:center;color:var(--dim);font-size:12px">No figures yet. Run matplotlib code.</p>
+  </div>
+</aside>
+<button class="figure-tab-toggle" id="figure-toggle" title="Toggle figures panel">
+  <span class="chev">◀</span>
+</button>
 
 <!-- Package install dialog -->
 <dialog id="pkg-dialog">
@@ -418,6 +508,35 @@ on($("#pkg-cancel"), "click", () => $("#pkg-dialog").close());
 on($("#examples-btn"), "click", () => { renderExamples(); $("#ex-dialog").showModal(); });
 on($("#ex-close"), "click", () => $("#ex-dialog").close());
 
+/* ═════ Figure tab ═════ */
+const figureTab = $("#figure-tab");
+const figureToggle = $("#figure-toggle");
+const figureBody = $("#figure-body");
+const figureCount = $("#figure-count");
+let figureIndex = 0;
+
+function toggleFigureTab(force){
+  const open = force !== undefined ? force : !figureTab.classList.contains("open");
+  figureTab.classList.toggle("open", open);
+  figureToggle.classList.toggle("show", figureBody.children.length > 0 || open);
+}
+on(figureToggle, "click", () => toggleFigureTab());
+on($("#figure-close"), "click", () => toggleFigureTab(false));
+on($("#figure-clear"), "click", () => {
+  figureBody.innerHTML = "";
+  figureIndex = 0;
+  figureCount.textContent = "0";
+  figureToggle.classList.remove("show");
+  toggleFigureTab(false);
+});
+
+function clearFigures(){
+  figureBody.innerHTML = "";
+  figureIndex = 0;
+  figureCount.textContent = "0";
+  figureToggle.classList.remove("show");
+}
+
 /* ═════ Editor + syntax highlight ═════ */
 const ta = $("#py"), hl = $("#hl"), gutter = $("#gutter");
 
@@ -486,11 +605,7 @@ on(ta, "keydown", e => {
 /* ═════ Output ═════ */
 const outEl = $("#output"), timingEl = $("#timing");
 const statusEl = $("#status"), pillEl = $("#pill");
-function clearOut(){
-  outEl.innerHTML = "";
-  // Clear matplotlib figures
-  $("#mpl-container").innerHTML = "";
-}
+function clearOut(){ outEl.innerHTML = ""; }
 function outLine(text, cls=""){
   const p = document.createElement("p");
   p.className = "line " + cls;
@@ -512,20 +627,10 @@ const PRELOAD = ["numpy", "pandas", "matplotlib"];
 async function bootPyodide(){
   try {
     setStatus("loading Pyodide…", "load");
-    
-    // Configure stdin before loading Pyodide
+
     pyodide = await loadPyodide({
       stdout: line => outLine(line),
       stderr: line => outLine(line, "err"),
-    });
-
-    // Set up stdin handler - reads from the input field
-    pyodide.setStdin({
-      stdin: () => {
-        const val = $("#stdin").value;
-        if (!val) return undefined; // EOF
-        return val;
-      }
     });
 
     // Preload scientific stack
@@ -533,16 +638,13 @@ async function bootPyodide(){
     outLine("Loading: " + PRELOAD.join(", ") + "…", "meta");
     await pyodide.loadPackage(PRELOAD);
 
-    // Configure matplotlib to render to our container
-    const mplContainer = $("#mpl-container");
+    // Configure matplotlib to render to our figure panel
+    document.pyodideMplTarget = figureBody;
     pyodide.runPython(`
 import matplotlib
 matplotlib.use("module://matplotlib_pyodide.wasm_backend")
 import matplotlib.pyplot as plt
-plt.show = lambda *args, **kwargs: None  # We'll call canvas.show() manually
 `);
-    // Set the target for matplotlib output
-    document.pyodideMplTarget = mplContainer;
 
     setStatus("ready", "ok");
     $("#run-btn").disabled = false;
@@ -562,12 +664,9 @@ async function runCode(){
   busy = true;
   $("#run-btn").disabled = true;
   setStatus("running…", "load");
-  
-  // Clear previous output but keep the matplotlib container
-  outEl.innerHTML = "";
+  clearOut();
   timingEl.textContent = "…";
 
-  const stdinText = $("#stdin").value;
   const t0 = performance.now();
 
   try {
@@ -578,7 +677,8 @@ async function runCode(){
       console.warn("loadPackagesFromImports:", err);
     }
 
-    // Reset matplotlib state before running
+    // Clear previous figures before running
+    clearFigures();
     pyodide.runPython(`
 import matplotlib.pyplot as plt
 plt.close('all')
@@ -586,26 +686,40 @@ import gc
 gc.collect()
 `);
 
-    // Set up stdin for this run
-    if (stdinText.trim()){
-      // Store lines for input()
-      pyodide.globals.set("__stdin_text", stdinText);
-    } else {
-      pyodide.globals.set("__stdin_text", "");
-    }
+    // Ensure matplotlib backend is configured (in case user changed it)
+    pyodide.runPython(`
+import matplotlib
+try:
+    matplotlib.use("module://matplotlib_pyodide.wasm_backend")
+except Exception:
+    pass
+import matplotlib.pyplot as plt
+plt.close('all')
+`);
 
     // Run user code
     await pyodide.runPythonAsync(ta.value);
 
-    // Display any matplotlib figures
-    pyodide.runPython(`
+    // Render any open figures
+    const numFigs = pyodide.runPython(`
 import matplotlib.pyplot as plt
-_figs = [plt.figure(n) for n in plt.get_fignums()]
-for _f in _figs:
+len(plt.get_fignums())
+`);
+
+    if (numFigs > 0){
+      pyodide.runPython(`
+import matplotlib.pyplot as plt
+for _n in plt.get_fignums():
+    _f = plt.figure(_n)
     _f.canvas.show()
 `);
-    // Trigger a re-render of the mpl container
-    document.pyodideMplTarget = $("#mpl-container");
+      const n = figureBody.children.length;
+      figureCount.textContent = String(n);
+      if (n > 0){
+        figureToggle.classList.add("show");
+        toggleFigureTab(true);
+      }
+    }
 
     const ms = Math.round(performance.now() - t0);
     timingEl.textContent = ms + " ms";
@@ -675,10 +789,20 @@ plt.figure(figsize=(8, 4))
 plt.plot(x, np.sin(x))
 plt.title("sin(x)")
 plt.xlabel("x")
-plt.ylabel("sin(x)")`],
-  ["Reading input", `name = input("Your name: ")
-age = input("Your age: ")
-print(f"Hi {name}, you are {age} years old.")`],
+plt.ylabel("sin(x)")
+plt.tight_layout()`],
+  ["Matplotlib multi-plot", `import matplotlib
+matplotlib.use("module://matplotlib_pyodide.wasm_backend")
+import matplotlib.pyplot as plt
+import numpy as np
+
+x = np.linspace(0, 2*np.pi, 200)
+fig, axes = plt.subplots(2, 1, figsize=(8, 6))
+axes[0].plot(x, np.sin(x), color="crimson")
+axes[0].set_title("sin(x)")
+axes[1].plot(x, np.cos(x), color="steelblue")
+axes[1].set_title("cos(x)")
+plt.tight_layout()`],
   ["Fibonacci (recursive)", `def fib(n):
     if n < 2: return n
     return fib(n-1) + fib(n-2)
