@@ -163,6 +163,26 @@ button,select,textarea,input{font-family:inherit;color:inherit}
   --ed-bg:#ffffff;--ed-fg:#1e293b;--ed-kw:#b45309;--ed-str:#15803d;--ed-num:#1d4ed8;
   --ed-cmt:#94a3b8;--ed-sel:#e6ecf6;--ed-caret:#d97706;--ed-dim:#64748b;
 }
+.code[data-editor-theme="matrix"]{
+  --ed-bg:#000000;--ed-fg:#d1fae5;--ed-kw:#22c55e;--ed-str:#4ade80;--ed-num:#a7f3d0;
+  --ed-cmt:#2f7a45;--ed-sel:#123512;--ed-caret:#22c55e;--ed-dim:#4ade80;
+}
+.code[data-editor-theme="white"]{
+  --ed-bg:#ffffff;--ed-fg:#000000;--ed-kw:#0000ff;--ed-str:#a31515;--ed-num:#098658;
+  --ed-cmt:#767676;--ed-sel:#cce4ff;--ed-caret:#000000;--ed-dim:#6e6e6e;
+}
+.code[data-editor-theme="solarized-dark"]{
+  --ed-bg:#002b36;--ed-fg:#839496;--ed-kw:#859900;--ed-str:#2aa198;--ed-num:#d33682;
+  --ed-cmt:#586e75;--ed-sel:#073642;--ed-caret:#93a1a1;--ed-dim:#657b83;
+}
+.code[data-editor-theme="one-dark"]{
+  --ed-bg:#282c34;--ed-fg:#abb2bf;--ed-kw:#c678dd;--ed-str:#98c379;--ed-num:#d19a66;
+  --ed-cmt:#5c6370;--ed-sel:#3e4451;--ed-caret:#528bff;--ed-dim:#7f848e;
+}
+.code[data-editor-theme="github-light"]{
+  --ed-bg:#ffffff;--ed-fg:#24292e;--ed-kw:#d73a49;--ed-str:#032f62;--ed-num:#005cc5;
+  --ed-cmt:#6a737d;--ed-sel:#c8e1ff;--ed-caret:#044289;--ed-dim:#6a737d;
+}
 #gutter{
   padding:14px 10px 14px 14px;text-align:right;user-select:none;white-space:pre;overflow:hidden;flex:0 0 auto;
   font-family:var(--ed-font);font-size:var(--code-fs);line-height:1.7;color:var(--ed-dim);opacity:.65;
@@ -345,7 +365,7 @@ dialog dd{color:var(--dim)}
   <header class="bar">
     <div class="brand">
       <div class="logo">🐍</div>
-      <span><b>Python Runner</b><small>Pyodide · WASM · runs in your browser</small></span>
+      <span><b>Python Runner</b><small>Designed by Milad Vazan · SBU </small></span>
     </div>
     <div class="spacer"></div>
 
@@ -379,6 +399,11 @@ dialog dd{color:var(--dim)}
             <option value="monokai">Monokai</option>
             <option value="dracula">Dracula</option>
             <option value="light">Light</option>
+            <option value="matrix">Matrix</option>
+            <option value="white">White</option>
+            <option value="solarized-dark">Solarized Dark</option>
+            <option value="one-dark">One Dark</option>
+            <option value="github-light">GitHub Light</option>
           </select>
           <span class="spacer"></span>
           <span class="edtb-label" id="meta" style="font-family:var(--mono);opacity:.7">Python · Pyodide</span>
