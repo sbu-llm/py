@@ -618,13 +618,11 @@ async function bootPyodide(){
     outLine("Loading: " + PRELOAD.join(", ") + "…", "meta");
     await pyodide.loadPackage(PRELOAD);
 
-    // Point matplotlib's wasm backend at our container
-    document.pyodideMplTarget = figureBody;
-
-    // Use the correct backend for Pyodide 0.27
+    // Use the plain Agg backend + manual PNG export instead of the DOM-injecting
+    // wasm backend, which is unreliable (async draw races, DOM targeting quirks).
     pyodide.runPython(`
 import matplotlib
-matplotlib.use("module://matplotlib_pyodide.wasm_backend")
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 plt.close('all')
 `);
@@ -660,9 +658,6 @@ async function runCode(){
       console.warn("loadPackagesFromImports:", err);
     }
 
-    // Re-point target (in case DOM changed)
-    document.pyodideMplTarget = figureBody;
-
     // Close old figures
     pyodide.runPython(`
 import matplotlib.pyplot as plt
@@ -671,30 +666,33 @@ import gc
 gc.collect()
 `);
 
-    // Re-assert backend
-    pyodide.runPython(`
-import matplotlib
-try:
-    matplotlib.use("module://matplotlib_pyodide.wasm_backend")
-except Exception:
-    pass
-`);
-
     // Run the user code
     await pyodide.runPythonAsync(ta.value);
 
-    // Force matplotlib to flush any pending figures to the DOM
-    // In Pyodide 0.27 with wasm_backend, calling plt.show() triggers the render
-    pyodide.runPython(`
+    // Export any open figures as base64 PNGs (works regardless of backend/DOM quirks)
+    const figuresJson = pyodide.runPython(`
 import matplotlib.pyplot as plt
-if plt.get_fignums():
-    plt.show()
+import io, base64, json
+
+_imgs = []
+for _n in plt.get_fignums():
+    _fig = plt.figure(_n)
+    _buf = io.BytesIO()
+    _fig.savefig(_buf, format="png", bbox_inches="tight", dpi=130)
+    _buf.seek(0)
+    _imgs.append(base64.b64encode(_buf.read()).decode("ascii"))
+json.dumps(_imgs)
 `);
+    const figures = JSON.parse(figuresJson);
 
-    // Give the browser a moment to attach the canvas
-    await new Promise(r => setTimeout(r, 60));
+    figures.forEach((b64, i) => {
+      const img = document.createElement("img");
+      img.src = "data:image/png;base64," + b64;
+      img.alt = "Figure " + (i + 1);
+      figureBody.appendChild(img);
+    });
 
-    const rendered = figureBody.querySelectorAll("canvas, img").length;
+    const rendered = figures.length;
     figureCount.textContent = String(rendered);
 
     if (rendered > 0){
