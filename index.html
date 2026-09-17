@@ -1,0 +1,1420 @@
+<!doctype html>
+<html lang="en" dir="ltr" data-theme="black">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#000000" />
+<title>Python Runner Pro · SBU</title>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.27.0/full/pyodide.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+
+<style>
+:root{
+  --code-fs:15px;
+  --mono:"JetBrains Mono","Fira Code","SF Mono",Consolas,ui-monospace,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Tahoma,sans-serif;
+}
+[data-theme="black"]{--bg:#000;--panel:#000;--panel-2:#0a0a0a;--line:#1f1f1f;--fg:#f5f5f5;--dim:#8a8a8a;--accent:#e5e5e5;--accent-fg:#000;--code:#f5f5f5;--kw:#fff;--str:#b0b0b0;--num:#d4d4d4;--cmt:#5a5a5a;--ok:#a3e635;--err:#f87171;--sel:#1f1f1f}
+[data-theme="dark"]{--bg:#0a0e1a;--panel:#111827;--panel-2:#161f31;--line:#222f45;--fg:#e5e7eb;--dim:#94a3b8;--accent:#fbbf24;--accent-fg:#0a0e1a;--code:#dbe4f0;--kw:#fbbf24;--str:#86efac;--num:#7dd3fc;--cmt:#64748b;--ok:#86efac;--err:#fca5a5;--sel:#1f2b40}
+[data-theme="light"]{--bg:#f4f6fa;--panel:#fff;--panel-2:#f7f9fc;--line:#e2e7ef;--fg:#0f172a;--dim:#64748b;--accent:#d97706;--accent-fg:#fff;--code:#1e293b;--kw:#b45309;--str:#15803d;--num:#1d4ed8;--cmt:#94a3b8;--ok:#15803d;--err:#b91c1c;--sel:#e6ecf6}
+[data-theme="ocean"]{--bg:#08151f;--panel:#0f2a3f;--panel-2:#123147;--line:#1c4a6b;--fg:#d4f1f9;--dim:#7fb8d0;--accent:#22d3ee;--accent-fg:#06202c;--code:#d4f1f9;--kw:#22d3ee;--str:#6ee7b7;--num:#fbbf24;--cmt:#5f92a8;--ok:#6ee7b7;--err:#fca5a5;--sel:#173d58}
+[data-theme="monokai"]{--bg:#1e1f1c;--panel:#272822;--panel-2:#2d2e27;--line:#414339;--fg:#f8f8f2;--dim:#9a9b8d;--accent:#fd971f;--accent-fg:#1e1f1c;--code:#f8f8f2;--kw:#f92672;--str:#e6db74;--num:#ae81ff;--cmt:#75715e;--ok:#a6e22e;--err:#f92672;--sel:#49483e}
+[data-theme="dracula"]{--bg:#1e1f29;--panel:#282a36;--panel-2:#2f3140;--line:#44475a;--fg:#f8f8f2;--dim:#a9adc1;--accent:#bd93f9;--accent-fg:#1e1f29;--code:#f8f8f2;--kw:#ff79c6;--str:#f1fa8c;--num:#bd93f9;--cmt:#6272a4;--ok:#50fa7b;--err:#ff5555;--sel:#3d3f52}
+[data-theme="nord"]{--bg:#1c222c;--panel:#242b38;--panel-2:#2a3241;--line:#3b4454;--fg:#e5e9f0;--dim:#8b98ac;--accent:#88c0d0;--accent-fg:#1c222c;--code:#e5e9f0;--kw:#81a1c1;--str:#a3be8c;--num:#b48ead;--cmt:#616e88;--ok:#a3be8c;--err:#bf616a;--sel:#3b4454}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:14px;overflow:hidden;-webkit-text-size-adjust:100%}
+button,select,textarea,input{font-family:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line);border-radius:6px}
+::-webkit-scrollbar-track{background:transparent}
+
+.app{height:100vh;height:100dvh;display:flex;flex-direction:column}
+
+.bar{display:flex;align-items:center;gap:8px;flex:0 0 auto;height:56px;padding:0 12px;padding-top:env(safe-area-inset-top);background:var(--panel);border-bottom:1px solid var(--line);position:relative;z-index:60}
+.brand{display:flex;align-items:center;gap:9px;min-width:0}
+.logo{width:32px;height:32px;flex:0 0 auto;border-radius:10px;display:grid;place-items:center;font-size:18px;background:var(--panel-2);border:1px solid var(--line)}
+.brand b{font-weight:700;letter-spacing:-.01em;display:block;line-height:1.2;font-size:15px}
+.brand small{display:block;font-size:11px;color:var(--dim)}
+.spacer{flex:1}
+
+.swatches{display:flex;gap:5px;padding:4px;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;max-width:220px;overflow-x:auto;scrollbar-width:none}
+.swatches::-webkit-scrollbar{display:none}
+.sw{width:22px;height:22px;border-radius:6px;border:2px solid transparent;cursor:pointer;transition:transform .15s}
+.sw:hover{transform:scale(1.12)}
+.sw.on{border-color:var(--accent)}
+.sw[data-t="black"]{background:linear-gradient(135deg,#000,#2a2a2a)}
+.sw[data-t="dark"]{background:linear-gradient(135deg,#0a0e1a,#334155)}
+.sw[data-t="light"]{background:linear-gradient(135deg,#fff,#cbd5e1)}
+.sw[data-t="ocean"]{background:linear-gradient(135deg,#08151f,#22d3ee)}
+.sw[data-t="monokai"]{background:linear-gradient(135deg,#272822,#fd971f)}
+.sw[data-t="dracula"]{background:linear-gradient(135deg,#282a36,#bd93f9)}
+.sw[data-t="nord"]{background:linear-gradient(135deg,#242b38,#88c0d0)}
+
+.pill{display:flex;align-items:center;gap:7px;height:30px;padding:0 11px;border-radius:999px;background:var(--panel-2);border:1px solid var(--line);color:var(--dim);font-size:11.5px;font-family:var(--mono);white-space:nowrap}
+.pill .dot{width:7px;height:7px;border-radius:50%;background:var(--dim);flex:0 0 auto}
+.pill.ok .dot{background:var(--ok);box-shadow:0 0 8px var(--ok)}
+.pill.ok{color:var(--ok)}
+.pill.err .dot{background:var(--err);box-shadow:0 0 8px var(--err)}
+.pill.err{color:var(--err)}
+.pill.load .dot{background:var(--accent);box-shadow:0 0 8px var(--accent)}
+.pill.load{color:var(--accent)}
+
+.icon{background:transparent;border:1px solid var(--line);border-radius:9px;cursor:pointer;color:var(--dim);width:34px;height:34px;display:grid;place-items:center;font-size:14px;transition:.15s;flex:0 0 auto}
+.icon:hover{background:var(--panel-2);color:var(--accent);border-color:var(--accent)}
+.icon.on{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+.btn{border:0;border-radius:9px;height:34px;padding:0 15px;cursor:pointer;font-size:13px;font-weight:650;display:flex;align-items:center;gap:7px;white-space:nowrap}
+.primary{background:var(--accent);color:var(--accent-fg)}
+.primary:hover{filter:brightness(1.08)}
+.primary:disabled{opacity:.5;cursor:wait}
+.ghost{background:transparent;border:1px solid var(--line);color:var(--dim)}
+.ghost:hover{background:var(--panel-2);color:var(--fg)}
+.kbd{font-family:var(--mono);font-size:10.5px;opacity:.6}
+
+.work{flex:1;min-height:0;display:flex;position:relative}
+
+.sidebar{width:0;overflow:hidden;background:var(--panel-2);border-right:1px solid var(--line);transition:width .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;flex:0 0 auto}
+.sidebar.open{width:240px}
+.sidebar-head{display:flex;align-items:center;gap:8px;padding:10px 12px;font-size:12px;color:var(--dim);border-bottom:1px solid var(--line);white-space:nowrap;height:44px;flex:0 0 auto}
+.sidebar-head b{color:var(--fg);font-weight:650;font-size:12.5px}
+.sidebar-head .path{font-family:var(--mono);font-size:10.5px;color:var(--dim);opacity:.7}
+.snip-search{width:calc(100% - 16px);background:var(--panel);border:1px solid var(--line);border-radius:7px;height:28px;padding:0 9px;font-size:12px;outline:0;margin:8px 8px 4px}
+.snip-search:focus{border-color:var(--accent)}
+.snip-list{flex:1;overflow-y:auto;padding:6px 6px 12px}
+.snip{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;cursor:pointer;font-size:12.5px;color:var(--fg);transition:.12s;position:relative}
+.snip:hover{background:var(--panel)}
+.snip.on{background:var(--sel);color:var(--accent)}
+.snip .ficon{flex:0 0 auto;font-size:13px;opacity:.9}
+.snip .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--mono);font-size:12px}
+.snip .del{opacity:0;color:var(--err);background:transparent;border:0;cursor:pointer;font-size:13px;padding:0 2px}
+.snip:hover .del{opacity:.7}
+.snip .del:hover{opacity:1}
+.snip-add{margin:8px;height:32px;border-radius:8px;border:1px dashed var(--line);background:transparent;color:var(--dim);cursor:pointer;font-size:12px}
+.snip-add:hover{border-color:var(--accent);color:var(--accent)}
+
+.split{flex:1;min-height:0;display:grid;grid-template-rows:var(--eh,58%) 8px 1fr}
+.pane{display:flex;flex-direction:column;min-height:0;background:var(--panel)}
+
+.edtoolbar{display:flex;align-items:center;gap:9px;height:38px;padding:0 10px;flex:0 0 auto;background:var(--panel-2);border-bottom:1px solid var(--line)}
+.edtb-label{font-size:11.5px;color:var(--dim);white-space:nowrap}
+.edtb-select{background:var(--panel);border:1px solid var(--line);color:var(--fg);border-radius:7px;height:26px;padding:0 8px;font-size:12px;cursor:pointer;max-width:140px}
+.edtb-select:hover{border-color:var(--accent)}
+
+.tabs{display:flex;align-items:center;gap:2px;flex:1;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{display:flex;align-items:center;gap:6px;height:30px;padding:0 12px;border-radius:7px 7px 0 0;background:transparent;color:var(--dim);font-size:12px;cursor:pointer;white-space:nowrap;border:1px solid transparent;border-bottom:0;font-family:var(--mono)}
+.tab:hover{color:var(--fg);background:var(--panel)}
+.tab.on{background:var(--panel);color:var(--accent);border-color:var(--line);border-bottom-color:var(--panel)}
+.tab .x{opacity:.5;font-size:11px;font-family:var(--sans)}
+.tab .x:hover{opacity:1;color:var(--err)}
+
+.code{--ed-bg:var(--panel);--ed-fg:var(--code);--ed-kw:var(--kw);--ed-str:var(--str);--ed-num:var(--num);--ed-cmt:var(--cmt);--ed-sel:var(--sel);--ed-caret:var(--accent);--ed-dim:var(--dim);--ed-font:var(--mono);flex:1;min-height:0;display:flex;overflow:hidden;position:relative;background:var(--ed-bg)}
+.code[data-editor-theme="monokai"]{--ed-bg:#272822;--ed-fg:#f8f8f2;--ed-kw:#f92672;--ed-str:#e6db74;--ed-num:#ae81ff;--ed-cmt:#75715e;--ed-sel:#49483e;--ed-caret:#fd971f;--ed-dim:#9a9b8d}
+.code[data-editor-theme="dracula"]{--ed-bg:#282a36;--ed-fg:#f8f8f2;--ed-kw:#ff79c6;--ed-str:#f1fa8c;--ed-num:#bd93f9;--ed-cmt:#6272a4;--ed-sel:#3d3f52;--ed-caret:#bd93f9;--ed-dim:#a9adc1}
+.code[data-editor-theme="light"]{--ed-bg:#fff;--ed-fg:#1e293b;--ed-kw:#b45309;--ed-str:#15803d;--ed-num:#1d4ed8;--ed-cmt:#94a3b8;--ed-sel:#e6ecf6;--ed-caret:#d97706;--ed-dim:#64748b}
+.code[data-editor-theme="matrix"]{--ed-bg:#000;--ed-fg:#d1fae5;--ed-kw:#22c55e;--ed-str:#4ade80;--ed-num:#a7f3d0;--ed-cmt:#2f7a45;--ed-sel:#123512;--ed-caret:#22c55e;--ed-dim:#4ade80}
+.code[data-editor-theme="white"]{--ed-bg:#fff;--ed-fg:#000;--ed-kw:#0000ff;--ed-str:#a31515;--ed-num:#098658;--ed-cmt:#767676;--ed-sel:#cce4ff;--ed-caret:#000;--ed-dim:#6e6e6e}
+.code[data-editor-theme="solarized-dark"]{--ed-bg:#002b36;--ed-fg:#839496;--ed-kw:#859900;--ed-str:#2aa198;--ed-num:#d33682;--ed-cmt:#586e75;--ed-sel:#073642;--ed-caret:#93a1a1;--ed-dim:#657b83}
+.code[data-editor-theme="one-dark"]{--ed-bg:#282c34;--ed-fg:#abb2bf;--ed-kw:#c678dd;--ed-str:#98c379;--ed-num:#d19a66;--ed-cmt:#5c6370;--ed-sel:#3e4451;--ed-caret:#528bff;--ed-dim:#7f848e}
+.code[data-editor-theme="github-light"]{--ed-bg:#fff;--ed-fg:#24292e;--ed-kw:#d73a49;--ed-str:#032f62;--ed-num:#005cc5;--ed-cmt:#6a737d;--ed-sel:#c8e1ff;--ed-caret:#044289;--ed-dim:#6a737d}
+
+#gutter{padding:14px 10px 14px 14px;text-align:right;user-select:none;white-space:pre;overflow:hidden;flex:0 0 auto;font-family:var(--ed-font);font-size:var(--code-fs);line-height:1.7;color:var(--ed-dim);opacity:.65;background:var(--ed-bg)}
+.edit-wrap{position:relative;flex:1;min-width:0;background:var(--ed-bg)}
+#hl,#py{position:absolute;inset:0;margin:0;border:0;padding:14px 16px 14px 4px;white-space:pre;overflow:auto;font-family:var(--ed-font);font-size:var(--code-fs);line-height:1.7;tab-size:4}
+#hl{pointer-events:none;overflow:hidden;color:var(--ed-fg)}
+#hl .k{color:var(--ed-kw);font-weight:600}
+#hl .s{color:var(--ed-str)}
+#hl .n{color:var(--ed-num)}
+#hl .c{color:var(--ed-cmt);font-style:italic}
+#hl .err-line{background:rgba(248,113,113,.15);display:block}
+#hl .sel-line{background:rgba(34,211,238,.12);display:block}
+#py{background:transparent;color:transparent;-webkit-text-fill-color:transparent;caret-color:var(--ed-caret);resize:none;outline:0}
+#py::selection{background:var(--ed-sel);color:var(--ed-fg);-webkit-text-fill-color:var(--ed-fg)}
+
+.grab{cursor:row-resize;background:var(--bg);border-block:1px solid var(--line);touch-action:none;position:relative}
+.grab::after{content:"";display:block;width:44px;height:3px;margin:2px auto;border-radius:2px;background:var(--line)}
+.grab:hover{background:var(--panel-2)}
+
+.pane-head{display:flex;align-items:center;gap:9px;height:40px;padding:0 12px;flex:0 0 auto;background:var(--panel-2);border-bottom:1px solid var(--line);font-size:12.5px;color:var(--dim)}
+.pane-head .mini{height:24px;padding:0 9px;font-size:11px;border-radius:6px}
+
+.out-wrap{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden;position:relative}
+#output{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;font-family:var(--mono);font-size:13px;padding:14px 16px;line-height:1.65;white-space:pre-wrap}
+#output .line{margin:0}
+#output .err{color:var(--err)}
+#output .ok{color:var(--ok)}
+#output .dim{color:var(--dim)}
+#output .meta{color:var(--dim);font-style:italic}
+
+#progress{height:3px;background:var(--panel-2);overflow:hidden;position:absolute;top:0;left:0;right:0;z-index:5;display:none}
+#progress.on{display:block}
+#progress::after{content:"";display:block;height:100%;width:35%;background:var(--accent);animation:slide 1.1s infinite ease-in-out}
+@keyframes slide{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
+
+#stop-btn{background:var(--err);color:#fff;border:0;border-radius:8px;padding:0 12px;height:30px;font-size:12px;cursor:pointer;font-weight:600;display:none;align-items:center;gap:5px}
+#stop-btn.on{display:flex}
+
+.figure-tab{position:fixed;top:0;right:0;height:100dvh;width:0;overflow:hidden;background:var(--panel);border-left:1px solid var(--line);transition:width .28s cubic-bezier(.4,0,.2,1);z-index:50;display:flex;flex-direction:column;box-shadow:-6px 0 24px rgba(0,0,0,.35)}
+.figure-tab.open{width:min(56vw,720px)}
+.figure-tab-header{display:flex;align-items:center;gap:10px;height:44px;padding:0 14px;flex:0 0 auto;background:var(--panel-2);border-bottom:1px solid var(--line);font-size:13px;color:var(--dim);white-space:nowrap}
+.figure-tab-header b{color:var(--fg);font-weight:650}
+.figure-tab-body{flex:1;min-height:0;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:16px;align-items:center}
+.figure-tab-body img,.figure-tab-body canvas{max-width:100%;height:auto;border-radius:10px;border:1px solid var(--line);background:#fff;display:block}
+.figure-tab-toggle{position:fixed;top:50%;right:0;transform:translateY(-50%);z-index:51;width:30px;height:64px;border-radius:12px 0 0 12px;border:1px solid var(--line);border-right:0;background:var(--panel-2);color:var(--accent);cursor:pointer;display:none;align-items:center;justify-content:center;font-size:16px;transition:right .28s cubic-bezier(.4,0,.2,1)}
+.figure-tab-toggle.show{display:flex}
+.figure-tab.open ~ .figure-tab-toggle{right:min(56vw,720px)}
+.figure-tab-toggle .chev{transition:transform .28s ease}
+.figure-tab.open ~ .figure-tab-toggle .chev{transform:rotate(180deg)}
+
+dialog{border:1px solid var(--line);border-radius:16px;background:var(--panel);color:var(--fg);padding:22px;max-width:480px;width:92%;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+dialog::backdrop{background:rgba(0,0,0,.55)}
+dialog h2{font-size:15px;margin-bottom:14px}
+dialog label{display:block;font-size:12.5px;color:var(--dim);margin-bottom:6px}
+dialog input[type=text]{width:100%;background:var(--panel-2);border:1px solid var(--line);color:var(--fg);border-radius:8px;height:36px;padding:0 11px;font-family:var(--mono);font-size:13px;outline:0;margin-bottom:8px}
+dialog input:focus{border-color:var(--accent)}
+dialog .row{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+dialog dl{display:grid;grid-template-columns:auto 1fr;gap:9px 16px;font-size:13px}
+dialog dt{font-family:var(--mono);color:var(--accent);white-space:nowrap}
+dialog dd{color:var(--dim)}
+
+.toast{position:fixed;bottom:24px;right:24px;background:var(--panel);border:1px solid var(--accent);border-radius:10px;padding:11px 16px;color:var(--fg);font-size:13px;z-index:200;box-shadow:0 10px 30px rgba(0,0,0,.4);opacity:0;transform:translateY(10px);transition:.22s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+
+.drop-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:150;font-size:18px;color:var(--accent);border:3px dashed var(--accent);margin:20px;border-radius:20px}
+.drop-overlay.show{display:flex}
+
+@media (max-width:760px){
+  .bar{height:52px;gap:6px;padding:0 8px}
+  .brand small{display:none}
+  .brand b{font-size:13px}
+  .m-hide{display:none!important}
+  .swatches{max-width:100px}
+  .split{grid-template-rows:var(--eh-m,50%) 10px 1fr}
+  .grab{height:10px}
+  #py,#hl{padding:12px 12px 12px 4px}
+  #gutter{padding:12px 8px 12px 10px}
+  .pane-head{height:42px;gap:5px}
+  .edtoolbar{height:36px}
+  .edtb-label{display:none}
+  .edtb-select{max-width:100px}
+  .figure-tab.open{width:100vw}
+  .figure-tab.open ~ .figure-tab-toggle{right:100vw}
+  .sidebar.open{width:min(80vw,240px);position:absolute;top:0;bottom:0;left:0;z-index:55;box-shadow:6px 0 24px rgba(0,0,0,.5)}
+  .snip-search{font-size:16px}
+  .toast{left:16px;right:16px;bottom:16px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <header class="bar">
+    <button class="icon" id="sidebar-toggle" title="Toggle files (Ctrl+B)">📁</button>
+    <div class="brand">
+      <div class="logo">🐍</div>
+      <span><b>Python Runner Pro</b><small>Designed by Milad Vazan · SBU</small></span>
+    </div>
+    <div class="spacer"></div>
+
+    <div class="swatches m-hide" id="swatches">
+      <button class="sw on" data-t="black"></button>
+      <button class="sw" data-t="dark"></button>
+      <button class="sw" data-t="light"></button>
+      <button class="sw" data-t="ocean"></button>
+      <button class="sw" data-t="monokai"></button>
+      <button class="sw" data-t="dracula"></button>
+      <button class="sw" data-t="nord"></button>
+    </div>
+
+    <div class="pill load m-hide" id="pill"><span class="dot"></span><span id="status">loading…</span></div>
+    <button class="icon m-hide" id="auto-toggle" title="Auto-run on change">⚡</button>
+    <button class="icon m-hide" id="fs-down" title="Smaller">A−</button>
+    <button class="icon m-hide" id="fs-up" title="Larger">A+</button>
+    <button class="icon m-hide" id="share-btn" title="Share link">🔗</button>
+    <button class="icon m-hide" id="dl-btn" title="Download current file">⬇</button>
+    <button class="icon m-hide" id="help-btn" title="Shortcuts (F1)">?</button>
+    <button class="btn ghost m-hide" id="clear-btn">Clear</button>
+    <button class="btn ghost m-hide" id="examples-btn">Examples</button>
+    <button class="btn ghost m-hide" id="pkg-btn">📦</button>
+    <button class="btn ghost m-hide" id="run-selection-btn" disabled title="Run selection (Ctrl+Shift+Enter)">▶ Sel</button>
+    <button class="btn primary" id="run-btn" disabled>▶ Run <span class="kbd m-hide">⌘↵</span></button>
+  </header>
+
+  <main class="work">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-head">
+        <b>📁 Files</b>
+        <span class="spacer"></span>
+        <span class="path">/home/pyodide/</span>
+      </div>
+      <input class="snip-search" id="file-search" placeholder="Search files…">
+      <div class="snip-list" id="file-list"></div>
+      <button class="snip-add" id="file-add">+ New file (.py)</button>
+    </aside>
+
+    <div class="split" id="split">
+      <section class="pane">
+        <div class="edtoolbar">
+          <div class="tabs" id="tabs"></div>
+          <select class="edtb-select" id="editor-theme-select">
+            <option value="site">Match site</option>
+            <option value="monokai">Monokai</option>
+            <option value="dracula">Dracula</option>
+            <option value="light">Light</option>
+            <option value="matrix">Matrix</option>
+            <option value="white">White</option>
+            <option value="solarized-dark">Solarized</option>
+            <option value="one-dark">One Dark</option>
+            <option value="github-light">GitHub</option>
+          </select>
+        </div>
+        <div class="code" id="code-area">
+          <div id="gutter">1</div>
+          <div class="edit-wrap">
+            <pre id="hl" aria-hidden="true"></pre>
+            <textarea id="py" wrap="off" spellcheck="false" autocomplete="off" autocapitalize="off" autocorrect="off"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <div class="grab" id="grab"></div>
+
+      <section class="pane">
+        <div class="pane-head">
+          <span id="run-label">Output</span>
+          <span class="spacer"></span>
+          <span id="timing" style="font-family:var(--mono);font-size:12px">—</span>
+          <button class="btn ghost mini m-hide" id="copy-out" title="Copy output">📋</button>
+          <button class="btn ghost mini m-hide" id="dl-out" title="Download .txt">💾</button>
+          <button id="stop-btn">⏹ Stop</button>
+        </div>
+        <div class="out-wrap">
+          <div id="progress"></div>
+          <div id="output"><p class="line dim">Pyodide is loading. First load takes a few seconds…</p></div>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<aside class="figure-tab" id="figure-tab">
+  <div class="figure-tab-header">
+    <b>📊 Figures</b>
+    <span id="figure-count" style="font-family:var(--mono);font-size:11px">0</span>
+    <span class="spacer"></span>
+    <button class="icon" id="figure-clear" title="Clear" style="width:28px;height:28px;font-size:12px">🗑</button>
+    <button class="icon" id="figure-close" title="Close" style="width:28px;height:28px;font-size:12px">✕</button>
+  </div>
+  <div class="figure-tab-body" id="figure-body">
+    <p class="line dim" style="align-self:center;color:var(--dim);font-size:12px">No figures yet.</p>
+  </div>
+</aside>
+<button class="figure-tab-toggle" id="figure-toggle"><span class="chev">◀</span></button>
+
+<div class="drop-overlay" id="drop-overlay">📎 Drop .py / .csv / .txt files</div>
+<div class="toast" id="toast"></div>
+
+<dialog id="pkg-dialog">
+  <h2>Install a Python package</h2>
+  <label for="pkg-name">Package name (from PyPI)</label>
+  <input type="text" id="pkg-name" placeholder="e.g. requests, scipy, sympy">
+  <div class="row">
+    <button class="btn ghost" id="pkg-cancel">Cancel</button>
+    <button class="btn primary" id="pkg-install">Install</button>
+  </div>
+</dialog>
+
+<dialog id="ex-dialog">
+  <h2>Examples</h2>
+  <div id="ex-list" style="display:flex;flex-direction:column;gap:6px;max-height:60vh;overflow:auto"></div>
+  <div class="row"><button class="btn ghost" id="ex-close">Close</button></div>
+</dialog>
+
+<dialog id="help">
+  <h2>Keyboard shortcuts</h2>
+  <dl>
+    <dt>Ctrl/⌘ + Enter</dt><dd>Run current file</dd>
+    <dt>Ctrl/⌘ + Shift + Enter</dt><dd>Run selected code</dd>
+    <dt>Ctrl/⌘ + B</dt><dd>Toggle files sidebar</dd>
+    <dt>Ctrl/⌘ + S</dt><dd>Save / new file</dd>
+    <dt>Ctrl/⌘ + K</dt><dd>Command palette</dd>
+    <dt>Tab / Shift+Tab</dt><dd>Indent / outdent</dd>
+    <dt>F1</dt><dd>This dialog</dd>
+  </dl>
+  <div class="row"><button class="btn ghost" id="help-close">Close</button></div>
+</dialog>
+
+<script>
+/* ═══════════════════════════════════════════════
+   Utilities
+   ═══════════════════════════════════════════════ */
+const $ = s => document.querySelector(s);
+const $$ = s => document.querySelectorAll(s);
+const store = localStorage;
+const root = document.documentElement;
+const on = (el, ev, fn) => el && el.addEventListener(ev, fn);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function toast(msg, ms = 2200){
+  const t = $("#toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove("show"), ms);
+}
+
+/* ═══════════════════════════════════════════════
+   Theme
+   ═══════════════════════════════════════════════ */
+function setTheme(name){
+  root.dataset.theme = name;
+  store.setItem("py-theme", name);
+  $$(".sw").forEach(b => b.classList.toggle("on", b.dataset.t === name));
+}
+setTheme(store.getItem("py-theme") || "black");
+on($("#swatches"), "click", e => { const b = e.target.closest(".sw"); if (b) setTheme(b.dataset.t); });
+
+const codeArea = $("#code-area"), edSelect = $("#editor-theme-select");
+function setEditorTheme(name){
+  if (!name || name === "site") codeArea.removeAttribute("data-editor-theme");
+  else codeArea.dataset.editorTheme = name;
+  store.setItem("py-ed-theme", name || "site");
+}
+const savedEd = store.getItem("py-ed-theme") || "site";
+edSelect.value = savedEd; setEditorTheme(savedEd);
+on(edSelect, "change", e => setEditorTheme(e.target.value));
+
+let fs = +(store.getItem("py-fs") || 15);
+const applyFs = () => { root.style.setProperty("--code-fs", fs + "px"); store.setItem("py-fs", fs); };
+applyFs();
+on($("#fs-up"), "click", () => { fs = Math.min(28, fs + 1); applyFs(); });
+on($("#fs-down"), "click", () => { fs = Math.max(11, fs - 1); applyFs(); });
+
+on($("#help-btn"), "click", () => $("#help").showModal());
+on($("#help-close"), "click", () => $("#help").close());
+on($("#pkg-btn"), "click", () => $("#pkg-dialog").showModal());
+on($("#pkg-cancel"), "click", () => $("#pkg-dialog").close());
+on($("#examples-btn"), "click", () => { renderExamples(); $("#ex-dialog").showModal(); });
+on($("#ex-close"), "click", () => $("#ex-dialog").close());
+
+/* ═══════════════════════════════════════════════
+   Figure panel
+   ═══════════════════════════════════════════════ */
+const figureTab = $("#figure-tab"), figureToggle = $("#figure-toggle");
+const figureBody = $("#figure-body"), figureCount = $("#figure-count");
+
+function toggleFigureTab(force){
+  const open = force !== undefined ? force : !figureTab.classList.contains("open");
+  figureTab.classList.toggle("open", open);
+  const hasFig = figureBody.querySelector("canvas, img") !== null;
+  figureToggle.classList.toggle("show", hasFig || open);
+}
+on(figureToggle, "click", () => toggleFigureTab());
+on($("#figure-close"), "click", () => toggleFigureTab(false));
+on($("#figure-clear"), "click", () => {
+  figureBody.innerHTML = '<p class="line dim" style="align-self:center;color:var(--dim);font-size:12px">No figures yet.</p>';
+  figureCount.textContent = "0";
+  figureToggle.classList.remove("show");
+  toggleFigureTab(false);
+});
+function clearFigures(){
+  figureBody.innerHTML = "";
+  figureCount.textContent = "0";
+  figureToggle.classList.remove("show");
+}
+
+/* ═══════════════════════════════════════════════
+   Editor with syntax highlight
+   ═══════════════════════════════════════════════ */
+const ta = $("#py"), hl = $("#hl"), gutter = $("#gutter");
+const PY_KW = new Set((
+  "False|None|True|and|as|assert|async|await|break|class|continue|def|del|elif|else|except|finally|"+
+  "for|from|global|if|import|in|is|lambda|nonlocal|not|or|pass|raise|return|try|while|with|yield|"+
+  "match|case|print|len|range|int|str|float|list|dict|set|tuple|bool|sum|min|max|abs|round|sorted|"+
+  "enumerate|zip|type|isinstance|open|map|filter|any|all|repr|format|super|self"
+).split("|"));
+
+let errorLines = new Set();
+let selectionLines = new Set();
+
+function highlight(src){
+  const lines = src.split("\n");
+  return lines.map((lineText, i) => {
+    const lineNum = i + 1;
+    let lineOut = "";
+    let last = 0, m;
+    const re2 = /(#[^\n]*)|('(?:''|\\'|[^'])*'|"(?:[^"\\]|\\.)*")|(\b\d+(?:\.\d+)?\b)|([A-Za-z_][A-Za-z_0-9]*)/g;
+    while ((m = re2.exec(lineText)) !== null){
+      lineOut += esc(lineText.slice(last, m.index));
+      if (m[1]) lineOut += `<span class="c">${esc(m[1])}</span>`;
+      else if (m[2]) lineOut += `<span class="s">${esc(m[2])}</span>`;
+      else if (m[3]) lineOut += `<span class="n">${esc(m[3])}</span>`;
+      else lineOut += PY_KW.has(m[4]) ? `<span class="k">${esc(m[4])}</span>` : esc(m[4]);
+      last = m.index + m[0].length;
+    }
+    lineOut += esc(lineText.slice(last));
+    if (errorLines.has(lineNum)) return `<span class="err-line">${lineOut || " "}</span>`;
+    if (selectionLines.has(lineNum)) return `<span class="sel-line">${lineOut || " "}</span>`;
+    return lineOut;
+  }).join("\n") + "\n";
+}
+
+function paint(){
+  hl.innerHTML = highlight(ta.value);
+  const n = ta.value.split("\n").length;
+  gutter.textContent = Array.from({length:n}, (_,i) => i+1).join("\n");
+  syncScroll();
+}
+function syncScroll(){
+  hl.scrollTop = ta.scrollTop; hl.scrollLeft = ta.scrollLeft; gutter.scrollTop = ta.scrollTop;
+}
+on(ta, "scroll", syncScroll);
+
+/* ─── Track selection for highlight + enable Run Sel button ─── */
+function updateSelection(){
+  const s = ta.selectionStart, en = ta.selectionEnd;
+  const hasSel = en > s;
+  $("#run-selection-btn").disabled = !hasSel || !pyodide;
+
+  // Compute selected line numbers
+  const newSel = new Set();
+  if (hasSel){
+    const before = ta.value.slice(0, s);
+    const sel = ta.value.slice(s, en);
+    const startLine = before.split("\n").length;
+    const lineCount = sel.split("\n").length;
+    for (let i = 0; i < lineCount; i++) newSel.add(startLine + i);
+  }
+  // Only repaint if changed
+  const changed = newSel.size !== selectionLines.size ||
+                  [...newSel].some(x => !selectionLines.has(x));
+  if (changed){
+    selectionLines = newSel;
+    paint();
+  }
+}
+on(ta, "keyup", updateSelection);
+on(ta, "mouseup", updateSelection);
+on(ta, "select", updateSelection);
+on(ta, "click", updateSelection);
+on(ta, "input", updateSelection);
+
+const PAIRS = {"(":")","[":"]","{":"}","'":"'",'"':'"',"`":"`"};
+on(ta, "keydown", e => {
+  const s = ta.selectionStart, en = ta.selectionEnd;
+
+  if (e.key === "Tab"){
+    e.preventDefault();
+    if (s === en && !e.shiftKey){
+      ta.value = ta.value.slice(0, s) + "    " + ta.value.slice(en);
+      ta.selectionStart = ta.selectionEnd = s + 4;
+    } else {
+      const before = ta.value.slice(0, s);
+      const sel = ta.value.slice(s, en);
+      const after = ta.value.slice(en);
+      const startLine = before.lastIndexOf("\n") + 1;
+      const blockStart = before.slice(startLine);
+      const full = blockStart + sel;
+      const lines = full.split("\n");
+      if (e.shiftKey){
+        lines.forEach((l, i) => { if (l.startsWith("    ")) lines[i] = l.slice(4); else if (l.startsWith("\t")) lines[i] = l.slice(1); });
+      } else {
+        lines.forEach((l, i) => lines[i] = "    " + l);
+      }
+      const newFull = lines.join("\n");
+      ta.value = before.slice(0, startLine) + newFull + after;
+      ta.selectionStart = s + (e.shiftKey ? -4 : 4);
+      ta.selectionEnd = en + (newFull.length - full.length);
+    }
+    paint(); save(); updateSelection();
+    return;
+  }
+
+  if (PAIRS[e.key] && s === en){
+    const next = ta.value[s];
+    const pairs = PAIRS[e.key];
+    if (e.key === pairs && next === pairs){
+      e.preventDefault();
+      ta.selectionStart = ta.selectionEnd = s + 1;
+      return;
+    }
+    e.preventDefault();
+    const insert = e.key + pairs;
+    ta.value = ta.value.slice(0, s) + insert + ta.value.slice(en);
+    ta.selectionStart = ta.selectionEnd = s + 1;
+    paint(); save();
+    return;
+  }
+
+  if (e.key === "Enter"){
+    e.preventDefault();
+    const lineStart = ta.value.lastIndexOf("\n", s - 1) + 1;
+    const line = ta.value.slice(lineStart, s);
+    const indent = (line.match(/^[ \t]*/) || [""])[0];
+    const extra = /[:\[\({]\s*$/.test(line) ? "    " : "";
+    const insert = "\n" + indent + extra;
+    ta.value = ta.value.slice(0, s) + insert + ta.value.slice(en);
+    ta.selectionStart = ta.selectionEnd = s + insert.length;
+    paint(); save();
+    return;
+  }
+
+  if (e.key === "Backspace" && s === en && s > 0){
+    const before = ta.value[s-1], after = ta.value[s];
+    if (PAIRS[before] && PAIRS[before] === after){
+      e.preventDefault();
+      ta.value = ta.value.slice(0, s-1) + ta.value.slice(s+1);
+      ta.selectionStart = ta.selectionEnd = s - 1;
+      paint(); save();
+      return;
+    }
+  }
+
+  if (e.key === "s" && (e.ctrlKey || e.metaKey)){
+    e.preventDefault();
+    if (activeFile >= 0){
+      files[activeFile].code = ta.value;
+      persistFiles();
+      toast("💾 Saved " + files[activeFile].name);
+    } else {
+      newFile();
+    }
+  }
+
+  if (e.key === "b" && (e.ctrlKey || e.metaKey)){
+    e.preventDefault();
+    toggleSidebar();
+  }
+
+  // Ctrl+Shift+Enter → Run selection
+  if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && e.shiftKey){
+    e.preventDefault();
+    runSelection();
+  }
+});
+
+/* ═══════════════════════════════════════════════
+   Files system (multi-file)
+   ═══════════════════════════════════════════════ */
+let files = JSON.parse(store.getItem("py-files") || "null") || [
+  { name: "main.py", code:
+`from helpers import greet, add
+
+print(greet("World"))
+print("2 + 3 =", add(2, 3))
+` },
+  { name: "helpers.py", code:
+`def greet(name):
+    return f"Hello, {name}!"
+
+def add(a, b):
+    return a + b
+` },
+];
+let activeFile = 0;
+let fileFilter = "";
+
+function persistFiles(){ store.setItem("py-files", JSON.stringify(files)); }
+
+function ensureExt(name){
+  name = String(name).trim();
+  if (!name) return null;
+  if (!/\.py$/i.test(name)) name += ".py";
+  return name;
+}
+function moduleName(name){ return name.replace(/\.py$/i, ""); }
+function isValidModule(name){ return /^[a-zA-Z_][a-zA-Z_0-9]*$/.test(moduleName(name)); }
+
+function renderFiles(){
+  const list = $("#file-list");
+  list.innerHTML = "";
+  const filtered = files.map((s, i) => ({...s, i}))
+    .filter(s => !fileFilter || s.name.toLowerCase().includes(fileFilter.toLowerCase()));
+  if (filtered.length === 0){
+    list.innerHTML = '<p style="color:var(--dim);font-size:12px;padding:8px;text-align:center">No files</p>';
+  }
+  filtered.forEach(s => {
+    const d = document.createElement("div");
+    d.className = "snip" + (s.i === activeFile ? " on" : "");
+    d.innerHTML = `<span class="ficon">🐍</span><span class="name">${esc(s.name)}</span><button class="del" title="Delete">🗑</button>`;
+    d.onclick = (ev) => {
+      if (ev.target.classList.contains("del")){
+        if (files.length <= 1){ toast("⚠️ Can't delete the last file"); return; }
+        if (!confirm(`Delete "${s.name}"?`)) return;
+        files.splice(s.i, 1);
+        if (activeFile >= files.length) activeFile = files.length - 1;
+        persistFiles(); renderFiles();
+        loadFile(activeFile);
+        return;
+      }
+      loadFile(s.i);
+    };
+    list.appendChild(d);
+  });
+
+  const tabs = $("#tabs");
+  tabs.innerHTML = "";
+  files.forEach((s, i) => {
+    const t = document.createElement("div");
+    t.className = "tab" + (i === activeFile ? " on" : "");
+    t.innerHTML = `<span>🐍 ${esc(s.name)}</span>${files.length > 1 ? '<span class="x">✕</span>' : ""}`;
+    t.onclick = (ev) => {
+      if (ev.target.classList.contains("x")){
+        if (files.length <= 1){ toast("⚠️ Can't close the last file"); return; }
+        if (!confirm(`Close "${s.name}"?`)) return;
+        files.splice(i, 1);
+        if (activeFile >= files.length) activeFile = files.length - 1;
+        persistFiles(); renderFiles();
+        loadFile(activeFile);
+        ev.stopPropagation();
+        return;
+      }
+      loadFile(i);
+    };
+    tabs.appendChild(t);
+  });
+}
+
+function loadFile(i){
+  if (activeFile >= 0 && activeFile < files.length){
+    files[activeFile].code = ta.value;
+  }
+  activeFile = i;
+  ta.value = files[i].code || "";
+  persistFiles();
+  paint();
+  renderFiles();
+  updateSelection();
+}
+
+function newFile(){
+  if (activeFile >= 0 && activeFile < files.length){
+    files[activeFile].code = ta.value;
+  }
+  let name = prompt("File name (will add .py):", "module_" + (files.length + 1));
+  if (name === null) return;
+  name = ensureExt(name);
+  if (!name) return;
+  if (!isValidModule(name)){
+    toast("❌ Name must be a valid Python module (letters, digits, _)");
+    return;
+  }
+  if (files.some(f => f.name === name)){
+    toast("❌ File already exists");
+    return;
+  }
+  files.push({ name, code: `# ${name}\n` });
+  activeFile = files.length - 1;
+  ta.value = files[activeFile].code;
+  persistFiles(); paint(); renderFiles();
+  ta.focus();
+  toast("✅ Created " + name);
+}
+
+on($("#file-add"), "click", newFile);
+on($("#file-search"), "input", e => { fileFilter = e.target.value; renderFiles(); });
+
+/* ═══════════════════════════════════════════════
+   Sidebar toggle — FIXED
+   ═══════════════════════════════════════════════ */
+const sidebarEl = $("#sidebar");
+const sidebarBtn = $("#sidebar-toggle");
+
+function toggleSidebar(force){
+  const isOpen = sidebarEl.classList.contains("open");
+  const shouldOpen = force !== undefined ? force : !isOpen;
+  sidebarEl.classList.toggle("open", shouldOpen);
+  sidebarBtn.classList.toggle("on", shouldOpen);
+  store.setItem("py-sb", shouldOpen ? "1" : "0");
+}
+// Restore on load
+(function restoreSidebar(){
+  const wasOpen = store.getItem("py-sb") === "1";
+  sidebarEl.classList.toggle("open", wasOpen);
+  sidebarBtn.classList.toggle("on", wasOpen);
+})();
+on(sidebarBtn, "click", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  toggleSidebar();
+});
+
+const save = () => {
+  if (activeFile >= 0 && activeFile < files.length){
+    files[activeFile].code = ta.value;
+  }
+  persistFiles();
+};
+on(ta, "input", () => { paint(); save(); });
+
+/* ═══════════════════════════════════════════════
+   Output / Status
+   ═══════════════════════════════════════════════ */
+const outEl = $("#output"), timingEl = $("#timing");
+const statusEl = $("#status"), pillEl = $("#pill");
+const progressEl = $("#progress");
+const stopBtn = $("#stop-btn");
+
+function clearOut(){ outEl.innerHTML = ""; }
+function outLine(text, cls=""){
+  const p = document.createElement("p");
+  p.className = "line " + cls;
+  p.textContent = text;
+  outEl.appendChild(p);
+  outEl.scrollTop = outEl.scrollHeight;
+}
+function setStatus(msg, kind=""){
+  statusEl.textContent = msg;
+  pillEl.className = "pill " + kind;
+}
+function setProgress(on){ progressEl.classList.toggle("on", on); }
+
+on($("#copy-out"), "click", () => {
+  navigator.clipboard.writeText(outEl.innerText).then(() => toast("📋 Copied"));
+});
+on($("#dl-out"), "click", () => {
+  download(outEl.innerText, "output.txt", "text/plain");
+});
+on($("#dl-btn"), "click", () => {
+  const name = files[activeFile]?.name || "code.py";
+  download(ta.value, name, "text/plain");
+});
+function download(content, filename, type){
+  const blob = new Blob([content], {type});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+/* ═══════════════════════════════════════════════
+   Pyodide bootstrap
+   ═══════════════════════════════════════════════ */
+let pyodide = null, busy = false, interrupted = false;
+
+const PRELOAD = ["numpy", "pandas", "matplotlib", "scikit-learn"];
+
+async function bootPyodide(){
+  try {
+    setStatus("loading Pyodide…", "load");
+    setProgress(true);
+
+    pyodide = await loadPyodide({
+      stdout: line => outLine(line),
+      stderr: line => outLine(line, "err"),
+    });
+
+    pyodide.runPython(`
+import builtins
+def _no_input(*args, **kwargs):
+    raise RuntimeError("input() is not supported. Use variables or file upload instead.")
+builtins.input = _no_input
+`);
+
+    setStatus("loading packages…", "load");
+    outLine("Loading: " + PRELOAD.join(", ") + "…", "meta");
+    await pyodide.loadPackage(PRELOAD);
+
+    pyodide.runPython(`
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+plt.close('all')
+`);
+
+    setStatus("ready", "ok");
+    setProgress(false);
+    $("#run-btn").disabled = false;
+    updateSelection();
+    clearOut();
+    outLine("Pyodide ready — " + PRELOAD.join(", ") + " loaded.", "ok");
+    outLine("Tip: select code and press Ctrl+Shift+Enter (or click ▶ Sel) to run just that part.", "meta");
+    renderFiles();
+    syncFilesToFS();
+  } catch (e){
+    console.error(e);
+    setStatus("load failed", "err");
+    setProgress(false);
+    clearOut();
+    outLine("Failed to load Pyodide: " + (e.message || e), "err");
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Sync all files to Pyodide virtual FS
+   ═══════════════════════════════════════════════ */
+function syncFilesToFS(){
+  if (!pyodide) return;
+  if (activeFile >= 0 && activeFile < files.length){
+    files[activeFile].code = ta.value;
+  }
+  for (const f of files){
+    try {
+      pyodide.FS.writeFile("/home/pyodide/" + f.name, f.code, {encoding: "utf8"});
+    } catch(e){
+      console.warn("write failed", f.name, e);
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   Common runner — runs given code string
+   ═══════════════════════════════════════════════ */
+async function executePython(code, label){
+  if (!pyodide || busy) return;
+  busy = true;
+  interrupted = false;
+  $("#run-btn").disabled = true;
+  $("#run-selection-btn").disabled = true;
+  stopBtn.classList.add("on");
+  setStatus("running…", "load");
+  setProgress(true);
+  clearOut();
+  clearFigures();
+  errorLines.clear();
+  timingEl.textContent = "…";
+  $("#run-label").textContent = label || "Output";
+
+  const t0 = performance.now();
+
+  try {
+    if (activeFile >= 0 && activeFile < files.length){
+      files[activeFile].code = ta.value;
+    }
+
+    // Clear local modules from sys.modules
+    pyodide.runPython(`
+import sys
+for _m in list(sys.modules.keys()):
+    _mod = sys.modules.get(_m)
+    _f = getattr(_mod, "__file__", None)
+    if _f and "/home/pyodide/" in str(_f):
+        del sys.modules[_m]
+`);
+
+    syncFilesToFS();
+
+    try { await pyodide.loadPackagesFromImports(code); } catch (err){ console.warn(err); }
+
+    pyodide.runPython(`
+import matplotlib.pyplot as plt
+plt.close('all')
+import gc; gc.collect()
+`);
+
+    pyodide.runPython(`
+import sys, os
+if "/home/pyodide" not in sys.path:
+    sys.path.insert(0, "/home/pyodide")
+try:
+    os.chdir("/home/pyodide")
+except Exception:
+    pass
+`);
+
+    await pyodide.runPythonAsync(code);
+
+    if (interrupted) throw new Error("Interrupted by user");
+
+    // Collect figures
+    const figuresJson = pyodide.runPython(`
+import matplotlib.pyplot as plt
+import io, base64, json
+_imgs = []
+for _n in plt.get_fignums():
+    _fig = plt.figure(_n)
+    _buf = io.BytesIO()
+    _fig.savefig(_buf, format="png", bbox_inches="tight", dpi=130)
+    _buf.seek(0)
+    _imgs.append(base64.b64encode(_buf.read()).decode("ascii"))
+json.dumps(_imgs)
+`);
+    const figures = JSON.parse(figuresJson);
+    figures.forEach((b64, i) => {
+      const img = document.createElement("img");
+      img.src = "data:image/png;base64," + b64;
+      img.alt = "Figure " + (i + 1);
+      figureBody.appendChild(img);
+    });
+    figureCount.textContent = String(figures.length);
+    if (figures.length > 0){
+      figureToggle.classList.add("show");
+      toggleFigureTab(true);
+    }
+
+    const ms = Math.round(performance.now() - t0);
+    timingEl.textContent = ms + " ms";
+    setStatus("ok", "ok");
+
+    if (typeof confetti === "function" && ms < 3000){
+      confetti({ particleCount: 60, spread: 70, origin: { y: 0.7 } });
+    }
+  } catch (e){
+    const ms = Math.round(performance.now() - t0);
+    timingEl.textContent = ms + " ms";
+    setStatus("error", "err");
+    const msg = String(e.message || e);
+    outLine(msg, "err");
+    highlightErrorLines(msg);
+  } finally {
+    busy = false;
+    $("#run-btn").disabled = false;
+    updateSelection();
+    stopBtn.classList.remove("on");
+    setProgress(false);
+  }
+}
+
+function highlightErrorLines(msg){
+  const re = /line (\d+)/g;
+  let m;
+  while ((m = re.exec(msg)) !== null){
+    errorLines.add(parseInt(m[1]));
+  }
+  paint();
+}
+
+/* ─── Run whole file ─── */
+async function runCode(){
+  const currentFileName = files[activeFile]?.name || "main.py";
+  await executePython(ta.value, "Output · " + currentFileName);
+}
+
+/* ─── Run only selection ─── */
+async function runSelection(){
+  const s = ta.selectionStart, en = ta.selectionEnd;
+  if (en <= s){ toast("⚠️ Select some code first"); return; }
+  const code = ta.value.slice(s, en);
+  const before = ta.value.slice(0, s);
+  const startLine = before.split("\n").length;
+  const lineCount = code.split("\n").length;
+
+  // Build a small prologue so tracebacks refer to correct line numbers
+  // (we indent the selection as a module-level run via exec with synthetic filename)
+  const wrapped =
+`# ─── Selection from line ${startLine} ───
+${code}
+# ─── End selection ───`;
+
+  await executePython(wrapped, `Output · selection (${lineCount} line${lineCount>1?"s":""})`);
+}
+
+on($("#run-btn"), "click", runCode);
+on($("#run-selection-btn"), "click", runSelection);
+on(stopBtn, "click", () => {
+  interrupted = true;
+  toast("⏹ Stopping…");
+  busy = false;
+  $("#run-btn").disabled = false;
+  updateSelection();
+  stopBtn.classList.remove("on");
+  setProgress(false);
+  setStatus("stopped", "err");
+});
+on($("#clear-btn"), "click", () => { clearOut(); timingEl.textContent = "—"; });
+
+/* ═══════════════════════════════════════════════
+   Auto-run
+   ═══════════════════════════════════════════════ */
+let autoRun = store.getItem("py-auto") === "1";
+const autoBtn = $("#auto-toggle");
+autoBtn.classList.toggle("on", autoRun);
+on(autoBtn, "click", () => {
+  autoRun = !autoRun;
+  autoBtn.classList.toggle("on", autoRun);
+  store.setItem("py-auto", autoRun ? "1" : "0");
+  toast(autoRun ? "⚡ Auto-run ON" : "Auto-run OFF");
+});
+let autoTimer;
+on(ta, "input", () => {
+  if (!autoRun || !pyodide || busy) return;
+  clearTimeout(autoTimer);
+  autoTimer = setTimeout(runCode, 1200);
+});
+
+/* ═══════════════════════════════════════════════
+   Share via URL
+   ═══════════════════════════════════════════════ */
+on($("#share-btn"), "click", () => {
+  if (activeFile >= 0) files[activeFile].code = ta.value;
+  const payload = JSON.stringify({ files, active: activeFile });
+  const compressed = LZString.compressToEncodedURIComponent(payload);
+  const url = location.origin + location.pathname + "#project=" + compressed;
+  history.replaceState(null, "", "#project=" + compressed);
+  navigator.clipboard.writeText(url).then(() => toast("🔗 Project link copied!"));
+});
+
+(function loadFromURL(){
+  if (location.hash.startsWith("#project=")){
+    try {
+      const compressed = location.hash.slice(9);
+      const json = LZString.decompressFromEncodedURIComponent(compressed);
+      const data = JSON.parse(json);
+      if (data && Array.isArray(data.files) && data.files.length){
+        files = data.files;
+        activeFile = Math.min(Math.max(0, data.active || 0), files.length - 1);
+        persistFiles();
+        ta.value = files[activeFile].code || "";
+        paint();
+        toast("📥 Project loaded from link");
+      }
+    } catch(e){ console.warn("bad project link", e); }
+  } else if (location.hash.startsWith("#code=")){
+    try {
+      const code = LZString.decompressFromEncodedURIComponent(location.hash.slice(6));
+      if (code){
+        ta.value = code;
+        files[activeFile].code = code;
+        persistFiles(); paint();
+        toast("📥 Loaded from shared link");
+      }
+    } catch(e){}
+  }
+})();
+
+/* ═══════════════════════════════════════════════
+   File upload / drag-drop
+   ═══════════════════════════════════════════════ */
+const dropOverlay = $("#drop-overlay");
+let dragCount = 0;
+on(document, "dragenter", e => { e.preventDefault(); dragCount++; dropOverlay.classList.add("show"); });
+on(document, "dragleave", e => { e.preventDefault(); dragCount--; if (dragCount <= 0){ dragCount = 0; dropOverlay.classList.remove("show"); } });
+on(document, "dragover", e => e.preventDefault());
+on(document, "drop", async e => {
+  e.preventDefault();
+  dragCount = 0;
+  dropOverlay.classList.remove("show");
+  if (!pyodide){ toast("⏳ Pyodide not ready"); return; }
+
+  const dropped = Array.from(e.dataTransfer.files);
+  for (const f of dropped){
+    const buf = await f.arrayBuffer();
+    const bytes = new Uint8Array(buf);
+    const isPy = /\.py$/i.test(f.name);
+
+    pyodide.FS.writeFile("/home/pyodide/" + f.name, bytes);
+
+    if (isPy){
+      const text = new TextDecoder("utf-8").decode(bytes);
+      const name = f.name;
+      const existing = files.findIndex(x => x.name === name);
+      if (existing >= 0){
+        if (confirm(`"${name}" already exists. Replace?`)){
+          files[existing].code = text;
+          persistFiles(); renderFiles();
+          if (existing === activeFile){ ta.value = text; paint(); }
+        }
+      } else {
+        files.push({ name, code: text });
+        persistFiles(); renderFiles();
+      }
+      outLine("📎 Imported .py: " + name, "ok");
+    } else {
+      outLine("📎 Uploaded data: " + f.name, "ok");
+    }
+  }
+  toast(`📎 ${dropped.length} file(s) added`);
+});
+
+/* ═══════════════════════════════════════════════
+   Install package
+   ═══════════════════════════════════════════════ */
+on($("#pkg-install"), "click", async () => {
+  const pkg = $("#pkg-name").value.trim();
+  if (!pkg || !pyodide) return;
+  $("#pkg-dialog").close();
+  setStatus("installing " + pkg + "…", "load");
+  outLine("📦 Installing " + pkg + "…", "meta");
+  try {
+    await pyodide.loadPackage("micropip");
+    const micropip = pyodide.pyimport("micropip");
+    await micropip.install(pkg);
+    setStatus("installed " + pkg, "ok");
+    outLine("✅ Installed " + pkg, "ok");
+    toast("✅ " + pkg + " installed");
+  } catch (e){
+    setStatus("install failed", "err");
+    outLine("❌ " + (e.message || e), "err");
+  }
+  $("#pkg-name").value = "";
+});
+
+/* ═══════════════════════════════════════════════
+   Examples
+   ═══════════════════════════════════════════════ */
+const EXAMPLES = [
+  { name: "Hello world",
+    files: [{ name: "main.py", code: `print("Hello, world!")` }] },
+  { name: "Multi-file · helpers + main",
+    files: [
+      { name: "helpers.py", code:
+`def greet(name):
+    return f"Hello, {name}!"
+
+def add(a, b):
+    return a + b
+` },
+      { name: "main.py", code:
+`from helpers import greet, add
+
+print(greet("World"))
+print("2 + 3 =", add(2, 3))
+` },
+    ] },
+  { name: "Multi-file · mathutils + main",
+    files: [
+      { name: "mathutils.py", code:
+`def fact(n):
+    if n < 2: return 1
+    return n * fact(n-1)
+
+def fib(n):
+    a, b = 0, 1
+    for _ in range(n):
+        a, b = b, a + b
+    return a
+` },
+      { name: "main.py", code:
+`from mathutils import fact, fib
+
+for i in range(8):
+    print(f"fact({i}) = {fact(i)}")
+print()
+for i in range(10):
+    print(f"fib({i}) = {fib(i)}")
+` },
+    ] },
+  { name: "Multi-file · numpy stats",
+    files: [
+      { name: "stats.py", code:
+`import numpy as np
+
+def describe(data):
+    return {
+        "mean": float(np.mean(data)),
+        "std":  float(np.std(data)),
+        "min":  float(np.min(data)),
+        "max":  float(np.max(data)),
+    }
+` },
+      { name: "main.py", code:
+`import numpy as np
+from stats import describe
+
+data = np.random.normal(50, 10, 1000)
+result = describe(data)
+for k, v in result.items():
+    print(f"{k:5} = {v:.3f}")
+` },
+    ] },
+  { name: "Multi-file · pandas report",
+    files: [
+      { name: "students.py", code:
+`import pandas as pd
+
+def make_df():
+    return pd.DataFrame({
+        "name": ["Ali", "Sara", "Reza", "Mina"],
+        "gpa":  [17.4, 18.9, 15.2, 19.1],
+    })
+
+def top(df, n=2):
+    return df.sort_values("gpa", ascending=False).head(n)
+` },
+      { name: "main.py", code:
+`from students import make_df, top
+
+df = make_df()
+print(df)
+print()
+print("Top 2:")
+print(top(df, 2))
+` },
+    ] },
+  { name: "Single · Matplotlib plot",
+    files: [{ name: "main.py", code:
+`import matplotlib.pyplot as plt
+import numpy as np
+
+x = np.linspace(0, 2*np.pi, 100)
+plt.figure(figsize=(8, 4))
+plt.plot(x, np.sin(x))
+plt.title("sin(x)")
+plt.xlabel("x"); plt.ylabel("sin(x)")
+plt.tight_layout()` }] },
+  { name: "Single · Try/except",
+    files: [{ name: "main.py", code:
+`def safe_div(a, b):
+    try: return a / b
+    except ZeroDivisionError: return "cannot divide by zero"
+
+print(safe_div(10, 2))
+print(safe_div(10, 0))` }] },
+  { name: "Read uploaded CSV",
+    files: [{ name: "main.py", code:
+`# Drop a CSV file onto the page first!
+import pandas as pd
+import os
+for f in os.listdir("."):
+    if f.endswith(".csv"):
+        print("Reading", f)
+        print(pd.read_csv(f).head())
+        break
+else:
+    print("No CSV found. Drop one onto the page.")` }] },
+];
+
+function renderExamples(){
+  const box = $("#ex-list");
+  box.innerHTML = "";
+  EXAMPLES.forEach(ex => {
+    const b = document.createElement("button");
+    b.className = "btn ghost";
+    b.style.justifyContent = "flex-start";
+    b.textContent = "📁 " + ex.name;
+    b.onclick = () => {
+      if (activeFile >= 0) files[activeFile].code = ta.value;
+      if (!confirm(`Load "${ex.name}"? Current files will be replaced.`)) return;
+      files = JSON.parse(JSON.stringify(ex.files));
+      activeFile = files.length - 1;
+      persistFiles();
+      ta.value = files[activeFile].code;
+      paint(); renderFiles();
+      $("#ex-dialog").close();
+      ta.focus();
+      toast("📁 Loaded: " + ex.name);
+    };
+    box.appendChild(b);
+  });
+}
+
+/* ═══════════════════════════════════════════════
+   Command palette
+   ═══════════════════════════════════════════════ */
+const COMMANDS = [
+  ["Run current file", runCode, "⌘↵"],
+  ["Run selection", runSelection, "⌘⇧↵"],
+  ["Clear output", () => { clearOut(); timingEl.textContent = "—"; }, ""],
+  ["New file (.py)", newFile, ""],
+  ["Toggle files sidebar", toggleSidebar, "⌘B"],
+  ["Toggle figure panel", () => toggleFigureTab(), ""],
+  ["Toggle auto-run", () => autoBtn.click(), ""],
+  ["Share project link", () => $("#share-btn").click(), ""],
+  ["Download current file", () => $("#dl-btn").click(), ""],
+  ["Install package…", () => $("#pkg-dialog").showModal(), ""],
+  ["Show examples", () => { renderExamples(); $("#ex-dialog").showModal(); }, ""],
+  ["Show shortcuts", () => $("#help").showModal(), "F1"],
+  ["Cycle theme", () => {
+    const themes = ["black","dark","light","ocean","monokai","dracula","nord"];
+    const cur = root.dataset.theme;
+    setTheme(themes[(themes.indexOf(cur) + 1) % themes.length]);
+  }, ""],
+  ["Focus editor", () => ta.focus(), ""],
+];
+
+const paletteDialog = document.createElement("dialog");
+paletteDialog.innerHTML = `
+  <h2>Command Palette</h2>
+  <input type="text" id="pal-input" placeholder="Type a command…" style="margin-bottom:8px">
+  <div id="pal-list" style="max-height:340px;overflow:auto;display:flex;flex-direction:column;gap:3px"></div>
+`;
+document.body.appendChild(paletteDialog);
+
+function openPalette(){
+  paletteDialog.showModal();
+  const input = $("#pal-input");
+  input.value = "";
+  input.focus();
+  renderPalette("");
+  input.oninput = e => renderPalette(e.target.value);
+  input.onkeydown = e => {
+    if (e.key === "ArrowDown"){ e.preventDefault(); movePalette(1); }
+    if (e.key === "ArrowUp"){ e.preventDefault(); movePalette(-1); }
+    if (e.key === "Enter"){
+      e.preventDefault();
+      const active = paletteDialog.querySelector(".pal-item.active") || paletteDialog.querySelector(".pal-item");
+      if (active) active.click();
+    }
+  };
+  paletteDialog.addEventListener("click", e => {
+    if (e.target === paletteDialog) paletteDialog.close();
+  }, { once: true });
+}
+let paletteFiltered = [], paletteActive = 0;
+function renderPalette(q){
+  paletteFiltered = COMMANDS.filter(c => c[0].toLowerCase().includes(q.toLowerCase()));
+  paletteActive = 0;
+  const box = paletteDialog.querySelector("#pal-list");
+  box.innerHTML = paletteFiltered.map((c, i) =>
+    `<button class="btn ghost pal-item${i === 0 ? " active" : ""}" data-i="${i}" style="justify-content:space-between"><span>${esc(c[0])}</span><span class="kbd">${esc(c[2])}</span></button>`
+  ).join("") || '<p style="color:var(--dim);text-align:center;padding:12px">No matches</p>';
+  box.querySelectorAll(".pal-item").forEach(b => {
+    b.onclick = () => { paletteDialog.close(); paletteFiltered[+b.dataset.i][1](); };
+  });
+}
+function movePalette(dir){
+  const items = paletteDialog.querySelectorAll(".pal-item");
+  if (!items.length) return;
+  items[paletteActive].classList.remove("active");
+  paletteActive = (paletteActive + dir + items.length) % items.length;
+  items[paletteActive].classList.add("active");
+  items[paletteActive].scrollIntoView({block:"nearest"});
+}
+
+/* ═══════════════════════════════════════════════
+   Global shortcuts
+   ═══════════════════════════════════════════════ */
+document.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && e.shiftKey){
+    e.preventDefault();
+    runSelection();
+    return;
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter"){
+    e.preventDefault();
+    runCode();
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === "k"){ e.preventDefault(); openPalette(); }
+  if ((e.ctrlKey || e.metaKey) && e.key === "b"){ e.preventDefault(); toggleSidebar(); }
+  if (e.key === "F1"){ e.preventDefault(); $("#help").showModal(); }
+});
+
+/* ═══════════════════════════════════════════════
+   Resizable split
+   ═══════════════════════════════════════════════ */
+const split = $("#split"), grab = $("#grab");
+const key = () => innerWidth <= 760 ? "--eh-m" : "--eh";
+const savedH = store.getItem("py-eh-" + key());
+if (savedH) split.style.setProperty(key(), savedH);
+let dragging = false;
+on(grab, "pointerdown", e => { dragging = true; grab.setPointerCapture(e.pointerId); });
+on(grab, "pointermove", e => {
+  if (!dragging) return;
+  const r = split.getBoundingClientRect();
+  const h = Math.min(Math.max(e.clientY - r.top, 100), r.height - 100) + "px";
+  split.style.setProperty(key(), h);
+  store.setItem("py-eh-" + key(), h);
+});
+on(grab, "pointerup", () => dragging = false);
+
+/* ═══════════════════════════════════════════════
+   Boot
+   ═══════════════════════════════════════════════ */
+ta.value = files[activeFile]?.code || "";
+paint();
+renderFiles();
+bootPyodide();
+
+window.addEventListener("beforeunload", e => {
+  save();
+});
+</script>
+</body>
+</html>
